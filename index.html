@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>练时 LiftTime · 时间分配与健身记录</title>
+  <meta name="description" content="记录每天的时间分配与健身训练，自动生成训练简评、部位分析与恢复建议。数据保存在本地。">
+  <meta name="theme-color" content="#f3f4f6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="练时">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%23e11d48'/%3E%3Ccircle%20cx='32'%20cy='26'%20r='13'%20fill='none'%20stroke='%23fff'%20stroke-width='5'/%3E%3Crect%20x='24'%20y='42'%20width='5'%20height='10'%20rx='2'%20fill='%23fff'/%3E%3Crect%20x='32'%20y='38'%20width='5'%20height='14'%20rx='2'%20fill='%23fff'/%3E%3Crect%20x='40'%20y='34'%20width='5'%20height='18'%20rx='2'%20fill='%23fff'/%3E%3C/svg%3E">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="app">
+    <header class="top">
+      <h1><span class="logo">练</span>练时 LiftTime</h1>
+      <div class="top-sub" id="top-date"></div>
+    </header>
+    <main id="view"></main>
+    <nav class="tabbar" id="tabbar">
+      <button data-tab="time">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.5V12l3 2"/></svg>
+        时间
+      </button>
+      <button data-tab="workout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7.5 8.5v7M4.5 10v4M16.5 8.5v7M19.5 10v4M7.5 12h9"/></svg>
+        训练
+      </button>
+      <button data-tab="report">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V5M3 20h18"/></svg>
+        报告
+      </button>
+      <button data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2.1" fill="var(--card)"/><circle cx="15" cy="12" r="2.1" fill="var(--card)"/><circle cx="7.5" cy="17" r="2.1" fill="var(--card)"/></svg>
+        设置
+      </button>
+    </nav>
+  </div>
+  <noscript><p style="text-align:center;padding:40px">练时需要启用 JavaScript 才能使用。</p></noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
