@@ -1,0 +1,38 @@
+{
+  "meals": [
+    { "id": "m0811a", "date": "2026-08-11", "slot": "drink",   "name": "苹果热美式（瑞幸）", "kcal": 10, "protein": 0, "note": "" },
+    { "id": "m0811b", "date": "2026-08-11", "slot": "drink",   "name": "练前豆奶拿铁 300ml", "kcal": 100, "protein": 7 },
+    { "id": "m0811c", "date": "2026-08-11", "slot": "lunch",   "name": "麻辣烫（杭景元）", "kcal": 800, "protein": 30 },
+    { "id": "m0811d", "date": "2026-08-11", "slot": "snack",   "name": "牛奶+饮料补货（当日饮部分）", "kcal": 150, "protein": 5 },
+    { "id": "m0812a", "date": "2026-08-12", "slot": "drink",   "name": "瑞幸 9.9 咖啡", "kcal": 120, "protein": 2 },
+    { "id": "m0812b", "date": "2026-08-12", "slot": "drink",   "name": "练前冰豆奶 300ml", "kcal": 100, "protein": 7 },
+    { "id": "m0812c", "date": "2026-08-12", "slot": "drink",   "name": "练后拿铁 300ml", "kcal": 110, "protein": 5 },
+    { "id": "m0812d", "date": "2026-08-12", "slot": "lunch",   "name": "鸡柳大人炸鸡柳", "kcal": 650, "protein": 20 },
+    { "id": "m0813a", "date": "2026-08-13", "slot": "drink",   "name": "瑞幸 9.9 咖啡", "kcal": 120, "protein": 2 },
+    { "id": "m0813b", "date": "2026-08-13", "slot": "drink",   "name": "练后豆奶拿铁 400ml", "kcal": 150, "protein": 9 },
+    { "id": "m0813c", "date": "2026-08-13", "slot": "dinner",  "name": "张亮麻辣烫", "kcal": 900, "protein": 35 },
+    { "id": "m0814a", "date": "2026-08-14", "slot": "drink",   "name": "瑞幸大菠萝生椰冷萃", "kcal": 220, "protein": 4 },
+    { "id": "m0814b", "date": "2026-08-14", "slot": "dinner",  "name": "麻辣香锅（没加辣）", "kcal": 1415, "protein": 73, "note": "腊肠小酥肉偏多" },
+    { "id": "m0815a", "date": "2026-08-15", "slot": "drink",   "name": "练前豆奶拿铁 350ml", "kcal": 120, "protein": 8 },
+    { "id": "m0815b", "date": "2026-08-15", "slot": "supp",    "name": "练后蛋白粉15g+牛奶300ml", "kcal": 255, "protein": 22 },
+    { "id": "m0815c", "date": "2026-08-15", "slot": "lunch",   "name": "口蘑酿虾滑（自煮）", "kcal": 280, "protein": 30, "note": "虾仁+蛋清+口蘑" },
+    { "id": "m0815d", "date": "2026-08-15", "slot": "dinner",  "name": "鸡腿炖土豆+挂面（琵琶腿×2）", "kcal": 850, "protein": 45, "note": "自煮" },
+    { "id": "m0816a", "date": "2026-08-16", "slot": "drink",   "name": "练前牛奶 300ml", "kcal": 195, "protein": 10 },
+    { "id": "m0816b", "date": "2026-08-16", "slot": "supp",    "name": "练后蛋白粉15g+牛奶300ml", "kcal": 255, "protein": 22 },
+    { "id": "m0816c", "date": "2026-08-16", "slot": "lunch",   "name": "炸琵琶腿×2（面糊浅炸）", "kcal": 625, "protein": 28, "note": "腌制过夜+浅炸" },
+    { "id": "m0816d", "date": "2026-08-16", "slot": "dinner",  "name": "五花肉煸白菜（一锅出）", "kcal": 525, "protein": 19, "note": "自煮清库存" },
+    { "id": "m0816e", "date": "2026-08-16", "slot": "snack",   "name": "巧乐兹×2", "kcal": 525, "protein": 5 },
+    { "id": "m0817a", "date": "2026-08-17", "slot": "lunch",   "name": "泰国猪肉打抛饭", "kcal": 775, "protein": 28, "note": "返利¥18" },
+    { "id": "m0817b", "date": "2026-08-17", "slot": "dinner",  "name": "蛋炒饭（剩饭+剩五花）", "kcal": 575, "protein": 18, "note": "自煮清库存" },
+    { "id": "m0817c", "date": "2026-08-17", "slot": "snack",   "name": "泡芙×3", "kcal": 525, "protein": 6 },
+    { "id": "m0818a", "date": "2026-08-18", "slot": "drink",   "name": "泰奶拿铁", "kcal": 275, "protein": 4 },
+    { "id": "m0818b", "date": "2026-08-18", "slot": "dinner",  "name": "手撕鸭+一碗饭", "kcal": 750, "protein": 40 },
+    { "id": "m0819a", "date": "2026-08-19", "slot": "drink",   "name": "练前豆奶 400ml", "kcal": 170, "protein": 10 },
+    { "id": "m0819b", "date": "2026-08-19", "slot": "drink",   "name": "美式", "kcal": 5, "protein": 0 },
+    { "id": "m0819c", "date": "2026-08-19", "slot": "dinner",  "name": "德克士四件套（汉堡+香骨鸡+腿排+可乐）", "kcal": 1250, "protein": 40 }
+  ],
+  "expenses": [
+    { "id": "x0811-metro", "date": "2026-08-11", "time": "09:10", "cat": "transport", "amount": 4.0,  "note": "地铁（微信侧）" },
+    { "id": "x0811-shoe",  "date": "2026-08-11", "time": "20:30", "cat": "daily",    "amount": 21.0, "note": "洞洞鞋（微信侧）" }
+  ]
+}
