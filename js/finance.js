@@ -94,6 +94,11 @@ export function proteinEconomy(dietEntries, start, end) {
   };
 }
 
+/** 起止日期（当天0点时间戳）→ 计划天数，含首尾两天；start=end 为 1 天 */
+export function planDays(startTs, endTs) {
+  return Math.round((endTs - startTs) / 86400000) + 1;
+}
+
 /** 自定义周期计划区间：{days, startTs} → 起始日 00:00 起 N 天 */
 export function planRange(plan) {
   const d = new Date(plan.startTs); d.setHours(0, 0, 0, 0);

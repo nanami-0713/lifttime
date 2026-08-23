@@ -1,6 +1,6 @@
 {
   "name": "lifttime",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "练时 LiftTime —— 手机端时间分配 + 健身训练记录 PWA（零依赖、离线优先、数据本地保存）",
   "private": true,
   "type": "module",

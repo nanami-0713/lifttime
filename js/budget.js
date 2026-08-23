@@ -5,7 +5,7 @@ import { donut, stackedBars, legend, hbars } from './charts.js';
 import {
   EXP_CATS, MANUAL_CATS, catOfExp, weekRange, monthRange, allExpenses, inRange,
   summarizeSpend, proteinEconomy, budgetStatus, budgetAdvice, fmtMoney, PROTEIN_PRICE_REF,
-  planRange, planStatus, planAdvice,
+  planRange, planStatus, planAdvice, planDays,
 } from './finance.js';
 import { periodDiet } from './nutrition.js';
 import { dayKey, escapeHtml, fmtHM, fmtDateCN, hmToTs } from './util.js';
@@ -264,30 +264,51 @@ function planSheet(editId) {
   if (!st.settings.customBudgets) st.settings.customBudgets = [];
   const existing = editId ? st.settings.customBudgets.find(p => p.id === editId) : null;
   const now = Date.now();
+  const defStart = existing ? existing.startTs : now;
+  const defEnd = existing ? existing.startTs + (existing.days - 1) * 86400000 : now + 13 * 86400000;
   const body = document.createElement('div');
   body.innerHTML = `
     <div class="field"><label>计划名称（可选）</label>
       <input id="pl-name" maxlength="12" placeholder="如：两周冲刺 / 国庆长假" value="${existing ? escapeHtml(existing.name || '') : ''}"></div>
+    <div class="field"><label>预算金额 ¥</label>
+      <input type="number" inputmode="decimal" min="0" step="any" id="pl-amount" placeholder="如 800" value="${existing ? existing.amount : ''}"></div>
     <div class="form-row">
-      <div class="field"><label>预算金额 ¥</label>
-        <input type="number" inputmode="decimal" min="0" step="any" id="pl-amount" placeholder="如 800" value="${existing ? existing.amount : ''}"></div>
-      <div class="field"><label>时长（天）</label>
-        <input type="number" inputmode="numeric" min="1" max="365" step="1" id="pl-days" placeholder="如 14" value="${existing ? existing.days : 14}"></div>
+      <div class="field"><label>开始日期</label>
+        <input type="date" id="pl-start" value="${dayKey(defStart)}"></div>
+      <div class="field"><label>结束日期</label>
+        <input type="date" id="pl-end" value="${dayKey(defEnd)}"></div>
     </div>
-    <div class="field"><label>开始日期</label>
-      <input type="date" id="pl-start" value="${existing ? dayKey(existing.startTs) : dayKey(now)}"></div>
-    <p class="hint">从开始日期 0 点起算，持续你设的天数；结束后会保留总结，可以一键「再来一期」。</p>
+    <p class="hint" id="pl-days-hint"></p>
     <div style="display:flex;gap:10px">
       ${existing ? '<button class="btn btn-ghost" id="pl-del" style="flex:1;color:var(--brand)">删除计划</button>' : ''}
       <button class="btn btn-primary" id="pl-save" style="flex:1.6">${existing ? '保存修改' : '创建计划'}</button>
     </div>`;
+  // 起止日期 → 时长实时提示
+  const startEl = body.querySelector('#pl-start');
+  const endEl = body.querySelector('#pl-end');
+  const hintEl = body.querySelector('#pl-days-hint');
+  const calcDays = () => planDays(hmToTs(startEl.value || dayKey(now), '00:00'), hmToTs(endEl.value || dayKey(now), '00:00'));
+  const paintHint = () => {
+    const days = calcDays();
+    if (days < 1) {
+      hintEl.textContent = '结束日期不能早于开始日期';
+      hintEl.style.color = 'var(--brand)';
+    } else {
+      hintEl.textContent = '共 ' + days + ' 天（从开始日 0 点到结束日 24 点）；结束后会保留总结，可一键「再来一期」。';
+      hintEl.style.color = '';
+    }
+  };
+  paintHint();
+  startEl.addEventListener('change', paintHint);
+  endEl.addEventListener('change', paintHint);
   const { close } = openSheet(existing ? '编辑周期计划' : '自定义周期计划', body, { sticky: true });
   body.querySelector('#pl-save').addEventListener('click', () => {
     const amount = Number(body.querySelector('#pl-amount').value);
-    const days = Math.round(Number(body.querySelector('#pl-days').value));
     if (!(amount > 0)) { toast('先填预算金额'); return; }
-    if (!(days >= 1 && days <= 365)) { toast('天数填 1–365'); return; }
-    const startTs = hmToTs(body.querySelector('#pl-start').value || dayKey(now), '00:00');
+    const startTs = hmToTs(startEl.value || dayKey(now), '00:00');
+    const endTs = hmToTs(endEl.value || dayKey(now), '00:00');
+    const days = planDays(startTs, endTs);
+    if (!(days >= 1 && days <= 365)) { toast('结束日期要晚于或等于开始日期（最长 365 天）'); return; }
     const name = body.querySelector('#pl-name').value.trim() || (days + '天计划');
     const store = getState();
     if (!store.settings.customBudgets) store.settings.customBudgets = [];
@@ -296,7 +317,7 @@ function planSheet(editId) {
       toast('计划已更新');
     } else {
       store.settings.customBudgets.push({ id: uid(), name, amount: Math.round(amount * 100) / 100, days, startTs });
-      toast('已创建「' + name + '」');
+      toast('已创建「' + name + '」（' + days + ' 天）');
     }
     commit();
     close();

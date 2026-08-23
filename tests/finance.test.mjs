@@ -1,7 +1,7 @@
 // 预算引擎单元测试：node tests/finance.test.mjs
 import {
   weekRange, monthRange, allExpenses, summarizeSpend, proteinEconomy,
-  budgetStatus, budgetAdvice, fmtMoney, catOfExp, planRange, planStatus, planAdvice,
+  budgetStatus, budgetAdvice, fmtMoney, catOfExp, planRange, planStatus, planAdvice, planDays,
 } from '../js/finance.js';
 
 let pass = 0, fail = 0;
@@ -87,6 +87,10 @@ ok(adv.some(a => a.includes('补剂')), '补剂占比提醒');
 
 console.log('— 自定义周期计划 —');
 const day0 = new Date(2026, 7, 23, 18, 0, 0).getTime(); // 周日 18:00
+// 起止日期换算天数
+ok(planDays(day0, day0) === 1, '同一天 = 1 天计划');
+ok(planDays(day0, day0 + 13 * 86400000) === 14, '起止相差13天 = 14 天计划');
+ok(planDays(day0 + 86400000, day0) === 0, '结束早于开始 = 0（非法）');
 const plan14 = { id: 'p1', name: '两周冲刺', amount: 1000, days: 14, startTs: day0 };
 let pr = planRange(plan14);
 ok(new Date(pr.start).getHours() === 0, '计划起始归一到当天 0 点');
