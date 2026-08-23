@@ -8,7 +8,7 @@ import * as budgetTab from './budget.js';
 import * as reportTab from './report.js';
 import * as settingsTab from './settings.js';
 
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.2.3';
 export const APP_NAME = '练时 LiftTime';
 
 const TABS = {
@@ -142,7 +142,27 @@ export function isIOS() { return /iphone|ipad|ipod/i.test(window.navigator.userA
   }
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => { /* 离线能力降级，不影响使用 */ });
+      // 自动更新：新 SW 激活接管后自动刷新一次，让用户永远跑最新版
+      const hadController = !!navigator.serviceWorker.controller;
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing || !hadController) return;
+        refreshing = true;
+        toast('已更新到最新版本');
+        setTimeout(() => location.reload(), 600);
+      });
+      navigator.serviceWorker.register('./sw.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              toast('发现新版本，正在后台更新…');
+            }
+          });
+        });
+        reg.update().catch(() => { /* 忽略 */ });
+      }).catch(() => { /* 离线能力降级，不影响使用 */ });
     });
   }
 })();
