@@ -186,9 +186,17 @@ export function analyzeSession(workout, ctx) {
 
   // —— 恢复建议 ——
   const bw = ctx.bodyweight;
+  const di = ctx.dayIntake; // {p, cal, items, hasPostMeal} 当日已记录饮食（联动）
+  const lo = bw > 0 ? Math.round(bw * 1.6) : 80;
+  const hi = bw > 0 ? Math.round(bw * 2.2) : 110;
   const diet = [];
-  if (bw > 0) {
-    diet.push('蛋白质按 ' + bw + 'kg、每公斤 1.6–2.2g 算，今天目标 ' + Math.round(bw * 1.6) + '–' + Math.round(bw * 2.2) + 'g，分 3–4 餐吃，练后 2 小时内先落实 25–40g。');
+  if (di && di.items > 0) {
+    const eaten = Math.round(di.p);
+    const left = Math.max(0, lo - eaten);
+    diet.push('你在饮食页已记录今天摄入约 ' + eaten + 'g 蛋白质（目标 ' + lo + '–' + hi + 'g）' +
+      (left > 0 ? '，还差约 ' + left + 'g——练后这餐优先把它补上。' : '，下限已达成，练后再补 20–30g 巩固一下即可。'));
+  } else if (bw > 0) {
+    diet.push('蛋白质按 ' + bw + 'kg、每公斤 1.6–2.2g 算，今天目标 ' + lo + '–' + hi + 'g，分 3–4 餐吃，练后 2 小时内先落实 25–40g。');
   } else {
     diet.push('蛋白质按每公斤体重 1.6–2.2g 摄入（在「设置」里填体重可得到具体克数），练后 2 小时内先吃含 25–40g 蛋白的一餐。');
   }
@@ -200,6 +208,7 @@ export function analyzeSession(workout, ctx) {
   diet.push('训练每 1 小时补 500–750ml 水，全天以尿色淡黄为达标；出汗多时适当补点盐分。');
 
   const rest = [];
+  if (di && di.hasPostMeal) rest.push('练后餐已经吃上了 ✓ 恢复的开局很好，接下来把睡眠守住就行。');
   rest.push('今晚睡够 7–9 小时，肌肉修复的大头在深睡期' + (legsHeavy ? '；练腿日晚上腿胀的话可以把脚垫高一会儿。' : '。'));
   if (domsLevel === '明显' || domsLevel === '强烈') {
     rest.push('明天做 10–15 分钟低强度活动（快走、轻松单车）加 5–10 分钟' + (primaryLabels || '目标肌群') + '静态拉伸或泡沫轴放松，比完全躺平恢复更快。');

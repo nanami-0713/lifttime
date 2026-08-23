@@ -35,6 +35,7 @@ export function defaults() {
     activeWorkout: null,  // {id, startedAt, exercises:[{name, sets:[{w,r,ts}]}], notes}
     workouts: [],         // {id, startedAt, endAt, exercises, feeling, notes, analysis}
     customExercises: {},  // 名称 -> { p:[muscleKey], s:[muscleKey] }
+    dietEntries: [],      // {id, ts, meal, text, items, unmatched, kcal, p, c, f}
   };
 }
 

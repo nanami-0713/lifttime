@@ -3,6 +3,7 @@ import { getState, on, CAN_PERSIST } from './store.js';
 import { fmtDateCN, fmtWeekday, escapeHtml } from './util.js';
 import * as timeTab from './time.js';
 import * as workoutTab from './workout.js';
+import * as dietTab from './diet.js';
 import * as reportTab from './report.js';
 import * as settingsTab from './settings.js';
 
@@ -12,6 +13,7 @@ export const APP_NAME = '练时 LiftTime';
 const TABS = {
   time: { label: '时间', mod: timeTab },
   workout: { label: '训练', mod: workoutTab },
+  diet: { label: '饮食', mod: dietTab },
   report: { label: '报告', mod: reportTab },
   settings: { label: '设置', mod: settingsTab },
 };

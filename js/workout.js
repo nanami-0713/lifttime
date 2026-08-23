@@ -3,6 +3,7 @@ import { getState, commit, uid } from './store.js';
 import { openSheet, confirmD, toast, nav } from './app.js';
 import { renderAnalysisHTML } from './analysisView.js';
 import { analyzeSession, sessionStats } from './analysis.js';
+import { summarize, entriesOfDay } from './nutrition.js';
 import { searchExercises, resolveExercise, MUSCLES, muscleLabels } from './exercises.js';
 import { fmtClock, fmtHM, fmtDateCN, fmtDur, fmtLoad, escapeHtml, dayRange, dayKey } from './util.js';
 
@@ -288,6 +289,7 @@ function finishSheet() {
       unit: store.settings.unit,
       custom: store.customExercises,
       dayTimeMs: fitnessTimeToday(store),
+      dayIntake: dayIntakeToday(store, active.startedAt),
     });
     store.workouts.push(finished);
     store.activeWorkout = null;
@@ -296,6 +298,13 @@ function finishSheet() {
     nav('report');
     toast('训练已保存，看看今天的简评 ↓');
   });
+}
+
+function dayIntakeToday(store, woStartedAt) {
+  const entries = entriesOfDay(store.dietEntries, Date.now());
+  const s = summarize(entries);
+  const hasPostMeal = entries.some(e => e.meal === 'postworkout' && e.ts >= woStartedAt);
+  return { p: s.p, cal: s.kcal, items: s.items, hasPostMeal };
 }
 
 function fitnessTimeToday(store) {
