@@ -131,7 +131,7 @@ function paintMeals(root) {
         <div class="row-title">${m.label} <span style="color:var(--muted);font-weight:400;font-size:12.5px">${fmtHM(e.ts)}</span></div>
         <div class="row-sub">${escapeHtml(desc || e.text || '')}</div>
       </div>
-      <span class="row-val">${fmtNum(e.kcal || 0)}<small style="font-weight:400;color:var(--muted)"> kcal</small></span>
+      <span class="row-val">${fmtNum(e.kcal || 0)}<small style="font-weight:400;color:var(--muted)"> kcal</small>${e.cost > 0 ? '<br><small style="font-weight:400;color:var(--muted)">¥' + e.cost + '</small>' : ''}</span>
     </div>`;
   }).join('');
   el.querySelectorAll('.row').forEach(r => r.addEventListener('click', () => mealSheet(r.dataset.id)));
@@ -156,7 +156,9 @@ function mealSheet(editId) {
     <div class="form-row">
       <div class="field"><label>日期</label><input type="date" id="ms-date" value="${existing ? dayKey(existing.ts) : dayKey(now)}"></div>
       <div class="field"><label>时间</label><input type="time" id="ms-time" value="${existing ? fmtHM(existing.ts) : fmtHM(now)}"></div>
+      <div class="field" style="max-width:110px"><label>花费 ¥（选填）</label><input type="number" inputmode="decimal" min="0" step="any" id="ms-cost" placeholder="0" value="${existing && existing.cost > 0 ? existing.cost : ''}"></div>
     </div>
+    <p class="hint" style="margin:-4px 0 10px">填了花费会自动计入「预算」页的记餐开销，还能算蛋白质性价比。</p>
     <div style="display:flex;gap:10px">
       ${existing ? '<button class="btn btn-ghost" id="ms-del" style="flex:1;color:var(--brand)">删除</button>' : ''}
       <button class="btn btn-primary" id="ms-save" style="flex:1.6">${existing ? '保存修改' : '保存'}</button>
@@ -201,7 +203,9 @@ function mealSheet(editId) {
     const ts = hmToTs(body.querySelector('#ms-date').value || dayKey(now), body.querySelector('#ms-time').value || '12:00');
     const p = parseMealText(text);
     const store = getState();
-    const data = { ts, meal, text, items: p.items, unmatched: p.unmatched, kcal: p.kcal, p: p.p, c: p.c, f: p.f };
+    const costRaw = body.querySelector('#ms-cost').value.trim();
+    const cost = costRaw === '' ? 0 : Math.max(0, Number(costRaw) || 0);
+    const data = { ts, meal, text, items: p.items, unmatched: p.unmatched, kcal: p.kcal, p: p.p, c: p.c, f: p.f, cost };
     if (existing) {
       Object.assign(existing, data);
       toast('已更新这一餐');

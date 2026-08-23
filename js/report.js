@@ -2,6 +2,7 @@
 import { getState } from './store.js';
 import { dayBrief, analyzeSession, analyzePeriod, dailySeries } from './analysis.js';
 import { summarize, entriesOfDay } from './nutrition.js';
+import { weekRange, allExpenses, inRange, summarizeSpend, fmtMoney } from './finance.js';
 import { renderAnalysisHTML } from './analysisView.js';
 import { donut, stackedBars, legend } from './charts.js';
 import { dayStart, dayKey, dayRange, fmtDateCN, fmtWeekday, fmtDur, fmtHM, fmtLoad, escapeHtml } from './util.js';
@@ -84,6 +85,16 @@ function paintDay(root) {
         : '') + `</p>`;
   } else if (wos.length && dayOffset === 0) {
     html += `<p class="brief-p" style="font-weight:400;border-top:1px dashed var(--line);padding-top:10px;margin-top:10px">🍚 今天练了但还没记饮食——恢复一半靠吃，去「饮食」页把练后餐记上。</p>`;
+  }
+
+  // 当日/当周开销（预算联动）
+  const allExp = allExpenses(st.expenses, st.dietEntries);
+  const dayExp = summarizeSpend(inRange(allExp, start, end)).total;
+  const wr2 = weekRange(ts);
+  const weekExp = summarizeSpend(inRange(allExp, wr2.start, wr2.end)).total;
+  if (dayExp > 0 || weekExp > 0) {
+    html += `<p class="brief-p" style="font-weight:400;border-top:1px dashed var(--line);padding-top:10px;margin-top:10px">💰 当日开销 ¥${fmtMoney(dayExp)} · 本周已用 ¥${fmtMoney(weekExp)}` +
+      (st.settings.weeklyBudget ? ' / 预算 ¥' + fmtMoney(st.settings.weeklyBudget) + '（' + Math.round(weekExp / st.settings.weeklyBudget * 100) + '%）' : '') + `</p>`;
   }
   box.innerHTML = html;
 
