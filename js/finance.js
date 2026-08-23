@@ -94,6 +94,38 @@ export function proteinEconomy(dietEntries, start, end) {
   };
 }
 
+/** 自定义周期计划区间：{days, startTs} → 起始日 00:00 起 N 天 */
+export function planRange(plan) {
+  const d = new Date(plan.startTs); d.setHours(0, 0, 0, 0);
+  const start = d.getTime();
+  return { start, end: start + plan.days * 86400000 };
+}
+
+/** 自定义计划状态 = budgetStatus + notStarted/ended 标记 */
+export function planStatus(plan, spent, now) {
+  const { start, end } = planRange(plan);
+  const st = budgetStatus(spent, plan.amount, start, end, now);
+  if (!st) return { start, end, notStarted: now < start, ended: now >= end, invalid: true };
+  return Object.assign(st, { start, end, notStarted: now < start, ended: now >= end });
+}
+
+/** 自定义计划建议（进行中且需要提醒时返回文案） */
+export function planAdvice(plan, st) {
+  if (!st || st.invalid || st.notStarted || st.ended) return null;
+  const name = plan.name || plan.days + '天计划';
+  if (st.overProjected) {
+    if (st.remaining < 0) {
+      return '「' + name + '」已超预算 ¥' + fmtMoney(-st.remaining) + '，剩余 ' + st.daysLeft + ' 天尽量零额外开销。';
+    }
+    return '「' + name + '」按目前节奏预计花 ¥' + fmtMoney(st.projected) + '，会超预算 ¥' + fmtMoney(st.projected - st.budget) +
+      '；剩 ' + st.daysLeft + ' 天每天控制在 ¥' + fmtMoney(Math.max(0, st.perDayLeft)) + ' 内可以拉回。';
+  }
+  if (st.pct >= 85 && st.daysLeft > 1) {
+    return '「' + name + '」预算已用 ' + st.pct + '%，还剩 ' + st.daysLeft + ' 天，后面留意节奏。';
+  }
+  return null;
+}
+
 /** 预算进度（含节奏预测） */
 export function budgetStatus(spent, budget, rangeStart, rangeEnd, now) {
   if (!budget || budget <= 0) return null;

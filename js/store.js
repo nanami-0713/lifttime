@@ -28,7 +28,7 @@ export const DEFAULT_CATEGORIES = [
 export function defaults() {
   return {
     version: 1,
-    settings: { unit: 'kg', bodyweight: null, theme: 'auto', weeklyBudget: null, monthlyBudget: null },
+    settings: { unit: 'kg', bodyweight: null, theme: 'auto', weeklyBudget: null, monthlyBudget: null, customBudgets: [] },
     categories: DEFAULT_CATEGORIES.slice(),
     timer: null,          // { startedAt } 正在进行的练前计时
     timeBlocks: [],       // {id, start, end, cat, note}

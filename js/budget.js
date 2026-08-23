@@ -5,6 +5,7 @@ import { donut, stackedBars, legend, hbars } from './charts.js';
 import {
   EXP_CATS, MANUAL_CATS, catOfExp, weekRange, monthRange, allExpenses, inRange,
   summarizeSpend, proteinEconomy, budgetStatus, budgetAdvice, fmtMoney, PROTEIN_PRICE_REF,
+  planRange, planStatus, planAdvice,
 } from './finance.js';
 import { periodDiet } from './nutrition.js';
 import { dayKey, escapeHtml, fmtHM, fmtDateCN, hmToTs } from './util.js';
@@ -61,17 +62,63 @@ function paintProgress(root) {
   const month = budgetStatus(monthSpent, st.settings.monthlyBudget, mr.start, mr.end, now);
   const box = root.querySelector('#budget-progress');
 
-  if (!week && !month) {
-    box.innerHTML = `<p class="empty">还没有设置预算。点右上角「编辑预算」，设一个周预算或月预算，这里就会显示进度和节奏提醒。</p>
-      ${progressFree('本周已花', weekSpent)}${progressFree('本月已花', monthSpent)}`;
-    return;
-  }
+  const plans = st.settings.customBudgets || [];
   let html = '';
-  if (week) html += statusBar('本周', week);
-  else html += progressFree('本周已花（未设周预算）', weekSpent);
-  if (month) html += statusBar('本月', month);
-  else html += progressFree('本月已花（未设月预算）', monthSpent);
+  if (!week && !month && !plans.length) {
+    html = `<p class="empty">还没有预算计划。点右上角「编辑预算」设周/月预算，或点下方「自定义周期计划」自由定一个 N 天计划。</p>
+      ${progressFree('本周已花', weekSpent)}${progressFree('本月已花', monthSpent)}`;
+  } else {
+    if (week) html += statusBar('本周', week);
+    else html += progressFree('本周已花（未设周预算）', weekSpent);
+    if (month) html += statusBar('本月', month);
+    else html += progressFree('本月已花（未设月预算）', monthSpent);
+  }
+  // 自定义周期计划
+  html += `<div class="section-title" style="margin-top:6px">自定义周期计划</div>`;
+  if (!plans.length) {
+    html += `<p class="hint" style="margin:0 0 8px">还没有自定义计划——比如「14 天 ¥800」「10 天 ¥500」，天数金额随你定。</p>`;
+  }
+  plans.forEach(plan => { html += planCard(plan, all, now); });
+  html += `<button class="btn btn-ghost btn-small" id="btn-add-plan">＋ 自定义周期计划</button>`;
   box.innerHTML = html;
+
+  box.querySelector('#btn-add-plan').addEventListener('click', () => planSheet(null));
+  box.querySelectorAll('[data-plan-edit]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    planSheet(b.dataset.planEdit);
+  }));
+  box.querySelectorAll('[data-plan-renew]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    const store = getState();
+    const p = (store.settings.customBudgets || []).find(x => x.id === b.dataset.planRenew);
+    if (!p) return;
+    p.startTs = Date.now();
+    commit();
+    toast('「' + (p.name || p.days + '天计划') + '」已从今天开始新的一期');
+  }));
+  box.querySelectorAll('[data-plan-card]').forEach(el => el.addEventListener('click', () => planSheet(el.dataset.planCard)));
+}
+
+function planCard(plan, all, now) {
+  const { start, end } = planRange(plan);
+  const spent = summarizeSpend(inRange(all, start, end)).total;
+  const pst = planStatus(plan, spent, now);
+  const name = escapeHtml(plan.name || plan.days + '天计划');
+  const rangeText = `${new Date(start).getMonth() + 1}/${new Date(start).getDate()} – ${new Date(end - 86400000).getMonth() + 1}/${new Date(end - 86400000).getDate()}`;
+  if (pst.notStarted) {
+    return `<div class="row" data-plan-card="${plan.id}" style="cursor:pointer;border-bottom:1px solid var(--line)">
+      <div class="row-main"><div class="row-title">${name}</div>
+      <div class="row-sub">${rangeText} 开始 · ¥${fmtMoney(plan.amount)} / ${plan.days} 天</div></div>
+      <button class="icon-btn" data-plan-edit="${plan.id}" aria-label="编辑">✎</button></div>`;
+  }
+  if (pst.ended) {
+    const pct = plan.amount > 0 ? Math.round(spent / plan.amount * 100) : 0;
+    return `<div class="row" data-plan-card="${plan.id}" style="cursor:pointer;border-bottom:1px solid var(--line)">
+      <div class="row-main"><div class="row-title">${name} <span style="color:var(--muted);font-weight:400;font-size:11px">已结束</span></div>
+      <div class="row-sub">${rangeText} · 共花 ¥${fmtMoney(spent)} / ¥${fmtMoney(plan.amount)}（${pct}%）</div></div>
+      <button class="btn btn-ghost btn-small" data-plan-renew="${plan.id}" style="min-height:32px">再来一期</button></div>`;
+  }
+  return `<div data-plan-card="${plan.id}" style="cursor:pointer">${statusBar(name, pst)}</div>`;
 }
 
 function progressFree(label, v) {
@@ -210,6 +257,61 @@ function budgetSheet() {
   });
 }
 
+/* ---------- 自定义周期计划 ---------- */
+
+function planSheet(editId) {
+  const st = getState();
+  if (!st.settings.customBudgets) st.settings.customBudgets = [];
+  const existing = editId ? st.settings.customBudgets.find(p => p.id === editId) : null;
+  const now = Date.now();
+  const body = document.createElement('div');
+  body.innerHTML = `
+    <div class="field"><label>计划名称（可选）</label>
+      <input id="pl-name" maxlength="12" placeholder="如：两周冲刺 / 国庆长假" value="${existing ? escapeHtml(existing.name || '') : ''}"></div>
+    <div class="form-row">
+      <div class="field"><label>预算金额 ¥</label>
+        <input type="number" inputmode="decimal" min="0" step="any" id="pl-amount" placeholder="如 800" value="${existing ? existing.amount : ''}"></div>
+      <div class="field"><label>时长（天）</label>
+        <input type="number" inputmode="numeric" min="1" max="365" step="1" id="pl-days" placeholder="如 14" value="${existing ? existing.days : 14}"></div>
+    </div>
+    <div class="field"><label>开始日期</label>
+      <input type="date" id="pl-start" value="${existing ? dayKey(existing.startTs) : dayKey(now)}"></div>
+    <p class="hint">从开始日期 0 点起算，持续你设的天数；结束后会保留总结，可以一键「再来一期」。</p>
+    <div style="display:flex;gap:10px">
+      ${existing ? '<button class="btn btn-ghost" id="pl-del" style="flex:1;color:var(--brand)">删除计划</button>' : ''}
+      <button class="btn btn-primary" id="pl-save" style="flex:1.6">${existing ? '保存修改' : '创建计划'}</button>
+    </div>`;
+  const { close } = openSheet(existing ? '编辑周期计划' : '自定义周期计划', body, { sticky: true });
+  body.querySelector('#pl-save').addEventListener('click', () => {
+    const amount = Number(body.querySelector('#pl-amount').value);
+    const days = Math.round(Number(body.querySelector('#pl-days').value));
+    if (!(amount > 0)) { toast('先填预算金额'); return; }
+    if (!(days >= 1 && days <= 365)) { toast('天数填 1–365'); return; }
+    const startTs = hmToTs(body.querySelector('#pl-start').value || dayKey(now), '00:00');
+    const name = body.querySelector('#pl-name').value.trim() || (days + '天计划');
+    const store = getState();
+    if (!store.settings.customBudgets) store.settings.customBudgets = [];
+    if (existing) {
+      Object.assign(existing, { name, amount: Math.round(amount * 100) / 100, days, startTs });
+      toast('计划已更新');
+    } else {
+      store.settings.customBudgets.push({ id: uid(), name, amount: Math.round(amount * 100) / 100, days, startTs });
+      toast('已创建「' + name + '」');
+    }
+    commit();
+    close();
+  });
+  const del = body.querySelector('#pl-del');
+  if (del) del.addEventListener('click', async () => {
+    if (await confirmD('删除这个预算计划？（不会删除任何开销记录）', { danger: true, yes: '删除' })) {
+      const store = getState();
+      store.settings.customBudgets = (store.settings.customBudgets || []).filter(p => p.id !== editId);
+      commit();
+      close();
+    }
+  });
+}
+
 /* ---------- 趋势与总结 ---------- */
 
 function paintPeriod(root) {
@@ -279,7 +381,14 @@ function paintPeriod(root) {
     proteinEco: eco,
     proteinHitRate,
   });
+  // 自定义计划建议（进行中且需要提醒的排在最前）
+  const planAdvices = (st.settings.customBudgets || []).map(p => {
+    const r = planRange(p);
+    const spent = summarizeSpend(inRange(all, r.start, r.end)).total;
+    return planAdvice(p, planStatus(p, spent, now));
+  }).filter(Boolean);
+  const allAdvice = planAdvices.concat(advice);
   html += `<div class="section-title">给你的建议</div><ul class="advice-list">` +
-    advice.map(a => `<li>${escapeHtml(a)}</li>`).join('') + `</ul>`;
+    allAdvice.map(a => `<li>${escapeHtml(a)}</li>`).join('') + `</ul>`;
   box.innerHTML = html;
 }

@@ -1,7 +1,7 @@
 // 预算引擎单元测试：node tests/finance.test.mjs
 import {
   weekRange, monthRange, allExpenses, summarizeSpend, proteinEconomy,
-  budgetStatus, budgetAdvice, fmtMoney, catOfExp,
+  budgetStatus, budgetAdvice, fmtMoney, catOfExp, planRange, planStatus, planAdvice,
 } from '../js/finance.js';
 
 let pass = 0, fail = 0;
@@ -84,6 +84,42 @@ ok(adv.some(a => a.includes('折合')), '记餐性价比反馈');
 const suppSpend = summarizeSpend([{ ts: MON, amount: 200, cat: 'supplement', note: '' }, { ts: MON, amount: 100, cat: 'groceries', note: '' }]);
 adv = budgetAdvice({ week: null, month: null, sumWeek: suppSpend, proteinEco: ecoEmpty, proteinHitRate: null });
 ok(adv.some(a => a.includes('补剂')), '补剂占比提醒');
+
+console.log('— 自定义周期计划 —');
+const day0 = new Date(2026, 7, 23, 18, 0, 0).getTime(); // 周日 18:00
+const plan14 = { id: 'p1', name: '两周冲刺', amount: 1000, days: 14, startTs: day0 };
+let pr = planRange(plan14);
+ok(new Date(pr.start).getHours() === 0, '计划起始归一到当天 0 点');
+ok(pr.end - pr.start === 14 * 86400000, '14 天区间长度');
+let pst = planStatus(plan14, 300, day0);
+ok(!pst.notStarted && !pst.ended && pst.pct === 30, '进行中: 30%');
+ok(pst.daysLeft === 14, '第 1 天剩 14 天: ' + pst.daysLeft);
+// 未来计划
+const future = { id: 'p2', amount: 500, days: 10, startTs: day0 + 3 * 86400000 };
+pst = planStatus(future, 0, day0);
+ok(pst.notStarted && !pst.ended, '未来计划 notStarted');
+ok(planAdvice(future, pst) === null, '未开始不给建议');
+// 已结束计划
+const past = { id: 'p3', amount: 500, days: 10, startTs: day0 - 20 * 86400000 };
+pst = planStatus(past, 480, day0);
+ok(pst.ended && !pst.notStarted, '过期计划 ended');
+ok(planAdvice(past, pst) === null, '已结束不给建议');
+// 超节奏建议
+pst = planStatus(plan14, 900, day0 + 6 * 86400000); // 第7天花900/1000
+ok(pst.overProjected, '第7天90% -> 超节奏');
+let pa = planAdvice(plan14, pst);
+ok(pa && pa.includes('两周冲刺') && pa.includes('会超预算'), '超节奏建议文案: ' + (pa||'').slice(0,40));
+// 临期高占比但未超节奏（第12.75天花了850/1000，projected≈933）
+pst = planStatus(plan14, 850, day0 + 12 * 86400000);
+pa = planAdvice(plan14, pst);
+ok(!pst.overProjected && pst.pct === 85 && pa && pa.includes('85%'), '高占比提醒: ' + (pa||'').slice(0,40));
+// 已超预算
+pst = planStatus(plan14, 1100, day0 + 9 * 86400000);
+pa = planAdvice(plan14, pst);
+ok(pa && pa.includes('已超预算 ¥100'), '已超支文案: ' + (pa||'').slice(0,40));
+// 健康节奏 → null
+pst = planStatus(plan14, 300, day0 + 6 * 86400000);
+ok(planAdvice(plan14, pst) === null, '健康节奏不打扰');
 
 console.log('— 格式化 —');
 ok(fmtMoney(1234.5) === '1,234.5' || fmtMoney(1234.5) === '1,234.50', '千分位: ' + fmtMoney(1234.5));
