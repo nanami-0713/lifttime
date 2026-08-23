@@ -25,16 +25,40 @@ export const DEFAULT_CATEGORIES = [
   { key: 'other',      label: '其他',     color: '#94a3b8' },
 ];
 
+export const MEAL_SLOTS = [
+  { key: 'breakfast', label: '早餐', icon: '🌅' },
+  { key: 'lunch',     label: '午餐', icon: '☀️' },
+  { key: 'dinner',    label: '晚餐', icon: '🌙' },
+  { key: 'snack',     label: '加餐', icon: '🍪' },
+  { key: 'drink',     label: '饮品', icon: '☕' },
+  { key: 'supp',      label: '补剂', icon: '💊' },
+];
+
+export const EXPENSE_CATS = [
+  { key: 'housing',  label: '住房房租', color: '#6366f1' },
+  { key: 'food',     label: '餐饮外卖', color: '#ef4444' },
+  { key: 'grocery',  label: '食材采购', color: '#22c55e' },
+  { key: 'coffee',   label: '咖啡饮品', color: '#a855f7' },
+  { key: 'transport',label: '交通',     color: '#3b82f6' },
+  { key: 'game',     label: '游戏虚拟', color: '#f97316' },
+  { key: 'daily',    label: '生活日用', color: '#14b8a6' },
+  { key: 'other',    label: '其他',     color: '#94a3b8' },
+];
+
 export function defaults() {
   return {
     version: 1,
-    settings: { unit: 'kg', bodyweight: null, theme: 'auto' },
+    settings: { unit: 'kg', bodyweight: null, theme: 'auto', syncUrl: '', syncToken: '' },
     categories: DEFAULT_CATEGORIES.slice(),
     timer: null,          // { startedAt } 正在进行的练前计时
     timeBlocks: [],       // {id, start, end, cat, note}
     activeWorkout: null,  // {id, startedAt, exercises:[{name, sets:[{w,r,ts}]}], notes}
     workouts: [],         // {id, startedAt, endAt, exercises, feeling, notes, analysis}
     customExercises: {},  // 名称 -> { p:[muscleKey], s:[muscleKey] }
+    meals: [],            // {id, date:'YYYY-MM-DD', slot, name, kcal, protein, note}
+    expenses: [],         // {id, date:'YYYY-MM-DD', time:'HH:MM', cat, amount, note}
+    lastSyncAt: null,     // 上次从 PC 同步的时间戳
+    outbox: [],           // 手机离线记录、待推回 PC 的条目 id 队列
   };
 }
 

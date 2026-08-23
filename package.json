@@ -7,7 +7,9 @@
   "scripts": {
     "test": "node tests/analysis.test.mjs",
     "icons": "node scripts/gen-icons.mjs",
-    "serve": "python3 -m http.server 8130"
+    "serve": "python3 -m http.server 8130",
+    "sync": "node scripts/sync-server.mjs",
+    "export": "node scripts/export.mjs"
   },
   "repository": {
     "type": "git",

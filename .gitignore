@@ -5,3 +5,5 @@ dist/
 .vscode/
 .idea/
 *.tmp
+data/
+!data/.gitkeep

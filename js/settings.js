@@ -53,6 +53,22 @@ export function render(root) {
     </div>
 
     <div class="card">
+      <h2>局域网同步</h2>
+      <p class="hint" style="margin:0 0 12px">和电脑同一 WiFi 时，把 PC 上整理的饮食/开销记录拉到手机，手机离线记的也会推回 PC。地址形如 <code>http://192.168.1.5:8131</code>。</p>
+      <div class="field"><label>PC 同步地址</label>
+        <input id="st-sync-url" placeholder="http://192.168.x.x:8131" inputmode="url" value="${escapeHtml(st.settings.syncUrl || '')}">
+      </div>
+      <div class="field"><label>配对 token（PC 启动服务时显示）</label>
+        <input id="st-sync-token" placeholder="lt-xxxxxxxx" value="${escapeHtml(st.settings.syncToken || '')}">
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" id="sync-test" style="flex:1">测试连接</button>
+        <button class="btn btn-primary" id="sync-now" style="flex:1">立即同步</button>
+      </div>
+      ${st.lastSyncAt ? `<p class="hint" style="margin:10px 0 0">上次同步：${new Date(st.lastSyncAt).toLocaleString('zh-CN')}</p>` : ''}
+    </div>
+
+    <div class="card">
       <h2>安装到手机</h2>
       <div id="install-box"></div>
     </div>
@@ -87,6 +103,28 @@ export function render(root) {
   root.querySelector('#data-import').addEventListener('click', () => root.querySelector('#import-file').click());
   root.querySelector('#import-file').addEventListener('change', doImport);
   root.querySelector('#data-clear').addEventListener('click', doClear);
+
+  root.querySelector('#st-sync-url').addEventListener('change', e => {
+    getState().settings.syncUrl = e.target.value.trim();
+    commit();
+  });
+  root.querySelector('#st-sync-token').addEventListener('change', e => {
+    getState().settings.syncToken = e.target.value.trim();
+    commit();
+  });
+  root.querySelector('#sync-test').addEventListener('click', async () => {
+    const url = (getState().settings.syncUrl || '').replace(/\/+$/, '');
+    if (!url) { toast('先填 PC 同步地址'); return; }
+    try {
+      const r = await fetch(url + '/api/health');
+      const j = await r.json();
+      toast(j.ok ? `连接成功：${j.counts.meals} 饮食 / ${j.counts.expenses} 开销待同步` : '服务在线但返回异常');
+    } catch { toast('连不上 PC：检查同一 WiFi、地址端口、防火墙'); }
+  });
+  root.querySelector('#sync-now').addEventListener('click', async () => {
+    const { doSync } = await import('./diet.js');
+    await doSync(false);
+  });
 
   renderInstall(root);
 }

@@ -294,6 +294,30 @@ html[data-theme="dark"] .toast { background: rgba(229, 231, 235, 0.95); color: #
 .date-nav .date-label { font-weight: 700; font-size: 15px; }
 .date-nav button { background: var(--card); border: 1px solid var(--line); border-radius: 10px; width: 40px; height: 40px; font-size: 17px; color: var(--text); }
 
+/* ---------- 饮食页 ---------- */
+.diet-head .date-mid { display: flex; gap: 8px; align-items: center; }
+.diet-head input[type="date"] {
+  background: var(--card-2); border: 1px solid var(--line); border-radius: 10px;
+  color: var(--text); font-size: 14.5px; font-weight: 600; padding: 8px 10px;
+  font-family: inherit; min-height: 40px;
+}
+.diet-summary { display: flex; gap: 8px; margin: 12px 0; }
+.ds-item {
+  flex: 1; background: var(--card-2); border-radius: 12px; padding: 10px 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.ds-num { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ds-label { font-size: 11px; color: var(--muted); }
+.row-side { text-align: right; }
+.row-side .row-num { font-weight: 700; font-size: 14.5px; font-variant-numeric: tabular-nums; }
+.row-side small { font-size: 10.5px; color: var(--muted); font-weight: 400; }
+.row-side .row-sub { white-space: nowrap; }
+.row-ic {
+  width: 34px; height: 34px; border-radius: 10px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--card-2); font-size: 13px; font-weight: 700;
+}
+
 /* 桌面端：居中手机宽度 */
 @media (min-width: 700px) {
   body { background: var(--bg); }
