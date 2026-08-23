@@ -1,5 +1,5 @@
 // 练时 LiftTime Service Worker：应用壳缓存优先，离线可用
-const CACHE = 'lifttime-v1.0.3';
+const CACHE = 'lifttime-v1.2.3';
 const ASSETS = [
   './',
   './index.html',
@@ -14,6 +14,11 @@ const ASSETS = [
   './js/charts.js',
   './js/time.js',
   './js/workout.js',
+  './js/foods.js',
+  './js/nutrition.js',
+  './js/diet.js',
+  './js/finance.js',
+  './js/budget.js',
   './js/report.js',
   './js/settings.js',
   './icons/icon-192.png',

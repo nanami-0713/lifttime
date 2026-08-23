@@ -28,13 +28,15 @@ export const DEFAULT_CATEGORIES = [
 export function defaults() {
   return {
     version: 1,
-    settings: { unit: 'kg', bodyweight: null, theme: 'auto' },
+    settings: { unit: 'kg', bodyweight: null, theme: 'auto', weeklyBudget: null, monthlyBudget: null, customBudgets: [] },
     categories: DEFAULT_CATEGORIES.slice(),
     timer: null,          // { startedAt } 正在进行的练前计时
     timeBlocks: [],       // {id, start, end, cat, note}
     activeWorkout: null,  // {id, startedAt, exercises:[{name, sets:[{w,r,ts}]}], notes}
     workouts: [],         // {id, startedAt, endAt, exercises, feeling, notes, analysis}
     customExercises: {},  // 名称 -> { p:[muscleKey], s:[muscleKey] }
+    dietEntries: [],      // {id, ts, meal, text, items, unmatched, kcal, p, c, f, cost?}
+    expenses: [],         // {id, ts, amount, cat, note}
   };
 }
 

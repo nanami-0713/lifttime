@@ -1,11 +1,11 @@
 {
   "name": "lifttime",
-  "version": "1.0.0",
+  "version": "1.2.3",
   "description": "练时 LiftTime —— 手机端时间分配 + 健身训练记录 PWA（零依赖、离线优先、数据本地保存）",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/analysis.test.mjs",
+    "test": "node tests/analysis.test.mjs && node tests/nutrition.test.mjs && node tests/finance.test.mjs",
     "icons": "node scripts/gen-icons.mjs",
     "serve": "python3 -m http.server 8130"
   },

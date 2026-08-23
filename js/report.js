@@ -1,6 +1,8 @@
 // 报告页：某天的日简报（时间+训练）+ 阶段训练状态分析
 import { getState } from './store.js';
 import { dayBrief, analyzeSession, analyzePeriod, dailySeries } from './analysis.js';
+import { summarize, entriesOfDay } from './nutrition.js';
+import { weekRange, allExpenses, inRange, summarizeSpend, fmtMoney } from './finance.js';
 import { renderAnalysisHTML } from './analysisView.js';
 import { donut, stackedBars, legend } from './charts.js';
 import { dayStart, dayKey, dayRange, fmtDateCN, fmtWeekday, fmtDur, fmtHM, fmtLoad, escapeHtml } from './util.js';
@@ -69,6 +71,31 @@ function paintDay(root) {
   if (!wos.length) {
     html += `<p class="empty" style="padding:6px 0 0">${dayOffset === 0 ? '今天还没训练，练完这里会出现当日简评。' : '这天没有训练记录。'}</p>`;
   }
+
+  // 当日饮食 + 训练联动
+  const dietEnt = entriesOfDay(st.dietEntries, ts);
+  const dietSum = summarize(dietEnt);
+  const pLo = st.settings.bodyweight > 0 ? Math.round(st.settings.bodyweight * 1.6) : 80;
+  const pHi = st.settings.bodyweight > 0 ? Math.round(st.settings.bodyweight * 2.2) : 110;
+  if (dietEnt.length) {
+    const postEaten = wos.length && dietEnt.some(e => e.meal === 'postworkout' && e.ts >= wos[wos.length - 1].startedAt);
+    html += `<p class="brief-p" style="font-weight:400;border-top:1px dashed var(--line);padding-top:10px;margin-top:10px">🍚 当日饮食：${dietSum.kcal} kcal · 蛋白质 ${Math.round(dietSum.p)}g（目标 ${pLo}–${pHi}g）· ${dietEnt.length} 餐` +
+      (wos.length
+        ? (postEaten ? ' · 练后餐已补 ✓' : (dietSum.p < pLo ? ' · <span style="color:var(--warn)">训练日蛋白质有缺口，练后餐别省</span>' : ''))
+        : '') + `</p>`;
+  } else if (wos.length && dayOffset === 0) {
+    html += `<p class="brief-p" style="font-weight:400;border-top:1px dashed var(--line);padding-top:10px;margin-top:10px">🍚 今天练了但还没记饮食——恢复一半靠吃，去「饮食」页把练后餐记上。</p>`;
+  }
+
+  // 当日/当周开销（预算联动）
+  const allExp = allExpenses(st.expenses, st.dietEntries);
+  const dayExp = summarizeSpend(inRange(allExp, start, end)).total;
+  const wr2 = weekRange(ts);
+  const weekExp = summarizeSpend(inRange(allExp, wr2.start, wr2.end)).total;
+  if (dayExp > 0 || weekExp > 0) {
+    html += `<p class="brief-p" style="font-weight:400;border-top:1px dashed var(--line);padding-top:10px;margin-top:10px">💰 当日开销 ¥${fmtMoney(dayExp)} · 本周已用 ¥${fmtMoney(weekExp)}` +
+      (st.settings.weeklyBudget ? ' / 预算 ¥' + fmtMoney(st.settings.weeklyBudget) + '（' + Math.round(weekExp / st.settings.weeklyBudget * 100) + '%）' : '') + `</p>`;
+  }
   box.innerHTML = html;
 
   const sBox = root.querySelector('#day-sessions');
@@ -90,10 +117,14 @@ function paintDay(root) {
       const dayTimeMs = st.timeBlocks
         .filter(b => b.start >= start && b.start < end && fitCats.indexOf(b.cat) >= 0)
         .reduce((acc, b) => acc + (b.end - b.start), 0);
+      const dietEnt = entriesOfDay(st.dietEntries, w.startedAt);
+      const dietSum = summarize(dietEnt);
       a = analyzeSession(w, {
         history: st.workouts.filter(x => x.startedAt < w.startedAt),
         bodyweight: st.settings.bodyweight, unit: st.settings.unit, custom: st.customExercises,
         dayTimeMs,
+        dayIntake: { p: dietSum.p, cal: dietSum.kcal, items: dietSum.items,
+          hasPostMeal: dietEnt.some(e => e.meal === 'postworkout' && e.ts >= w.startedAt) },
       });
       w.analysis = a;
     }
