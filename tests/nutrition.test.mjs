@@ -1,5 +1,5 @@
 // 饮食引擎单元测试：node tests/nutrition.test.mjs
-import { parseMealText, targets, summarize, dailyAdvice, periodDiet, mealOf } from '../js/nutrition.js';
+import { parseMealText, targets, summarize, dailyAdvice, periodDiet, mealOf, ESTIMATE_CATS, estCatOf, extractGrams, guessCategory, estimateFor, guessFor, entryTotals } from '../js/nutrition.js';
 import { findFood } from '../js/foods.js';
 
 let pass = 0, fail = 0;
@@ -102,6 +102,30 @@ ok(pd.trainingLink.proteinHitOnTrainedDays === 3, '训练日蛋白质全达标: 
 ok(pd.daySums.length === 7 && pd.daySums[6].key, '按天序列长度 7');
 const pdEmpty = periodDiet([], 7, { bodyweight: 70, workouts: [], now: NOW });
 ok(pdEmpty.advice[0].includes('没有'), '空窗口建议');
+
+console.log('— 未识别食物估算助手 —');
+ok(ESTIMATE_CATS.length === 8, '8 个估算类别');
+ok(extractGrams('佛跳墙300g') === 300, '抠克数 300g');
+ok(extractGrams('大杯奶茶500毫升') === 500, '抠毫升 500ml');
+ok(extractGrams('1.5kg西瓜') === 1500, '抠 kg');
+ok(extractGrams('一碗不知道什么东西') === null, '无克数返回 null');
+ok(guessCategory('排骨汤') === 'soup', '排骨汤 → 汤类');
+ok(guessCategory('大杯奶茶') === 'drink', '奶茶 → 饮品');
+ok(guessCategory('手打柠檬茶') === 'drink', '柠檬茶 → 饮品');
+ok(guessCategory('红烧肉') === 'meat', '红烧肉 → 肉菜');
+ok(guessCategory('扬州炒饭') === 'staple', '炒饭 → 主食');
+ok(guessCategory('炒时蔬') === 'veg', '炒时蔬 → 素菜');
+ok(guessCategory('辣条两包') === 'snack', '辣条 → 零食');
+ok(guessCategory('神秘料理') === 'other', '猜不出 → 其他');
+let est = estimateFor('meat', 200);
+ok(est.kcal === 380 && est.p === 34, '肉菜200g → 380kcal/蛋白34: ' + est.kcal + '/' + est.p);
+let g = guessFor('佛跳墙300g');
+ok(g.catKey === 'other' && g.grams === 300 && g.kcal === 600, 'guessFor 组合: ' + JSON.stringify(g));
+g = guessFor('酸辣汤');
+ok(g.catKey === 'soup' && g.grams === 300, '酸辣汤默认 300g 汤');
+const parsed = parseMealText('2个鸡蛋');
+const totals = entryTotals(parsed, [{ name: '神秘菜', kcal: 400, p: 20, c: 10, f: 5 }]);
+ok(totals.kcal === parsed.kcal + 400 && Math.abs(totals.p - (parsed.p + 20)) < 0.01, 'entryTotals 合并解析+手估');
 
 console.log('— mealOf —');
 ok(mealOf('preworkout').label === '练前餐', '餐次映射');

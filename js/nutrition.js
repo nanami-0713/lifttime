@@ -83,6 +83,78 @@ export function parseMealText(text) {
   };
 }
 
+/* ---------- 未识别食物的估算助手 ---------- */
+
+/** 粗类别均值（每 100g 的 kcal/蛋白/碳水/脂肪 + 默认份克数） */
+export const ESTIMATE_CATS = [
+  { key: 'meat',   label: '肉菜/荤菜',   per100: { k: 190, p: 17, c: 3,  f: 12 }, grams: 200 },
+  { key: 'staple', label: '主食',        per100: { k: 150, p: 4,  c: 30, f: 1.5 }, grams: 250 },
+  { key: 'veg',    label: '素菜/蔬菜',   per100: { k: 50,  p: 2.5,c: 6,  f: 2.5 }, grams: 200 },
+  { key: 'soup',   label: '汤/羹',       per100: { k: 45,  p: 2.5,c: 5,  f: 1.5 }, grams: 300 },
+  { key: 'snack',  label: '零食/甜点',   per100: { k: 420, p: 6,  c: 58, f: 18 }, grams: 100 },
+  { key: 'drink',  label: '饮品',        per100: { k: 45,  p: 1,  c: 9,  f: 1.5 }, grams: 300 },
+  { key: 'mixed',  label: '混合菜/盖饭', per100: { k: 150, p: 7,  c: 18, f: 6 }, grams: 350 },
+  { key: 'other',  label: '其他',        per100: { k: 200, p: 8,  c: 20, f: 9 }, grams: 200 },
+];
+export function estCatOf(key) { return ESTIMATE_CATS.find(c => c.key === key) || ESTIMATE_CATS[ESTIMATE_CATS.length - 1]; }
+
+const GUESS_RULES = [
+  ['soup', /汤|羹/],
+  ['drink', /奶茶|果汁|咖啡|可乐|雪碧|啤|红酒|白酒|豆浆|酸奶|鲜奶|柠檬茶|茶$|饮|汁$/],
+  ['snack', /蛋糕|糖果|饼干|薯片|巧克力|冰淇淋|雪糕|甜甜圈|布丁|蛋挞|麻花|辣条|爆米花/],
+  ['staple', /炒饭|炒面|饭|面条|米线|米粉|馒头|包子|饺|馄饨|馍|寿司|三明治|汉堡|意面|拉面|河粉|粥|饼(?!干)/],
+  ['meat', /鸡|鸭|鹅|牛|羊|猪|鱼|虾|蟹|肉|排骨|肘|蹄|香肠|火腿|丸|翅|扒/],
+  ['veg', /菜|沙拉|蔬|菌|菇|木耳|海带/],
+];
+
+/** 从文本里抠克数："佛跳墙300g" → 300；"1.5kg" → 1500 */
+export function extractGrams(text) {
+  const m = String(text || '').match(/([0-9]+(?:\.[0-9]+)?)\s*(kg|g|克|毫升|ml)/i);
+  if (!m) return null;
+  const v = parseFloat(m[1]);
+  return /kg/i.test(m[2]) ? Math.round(v * 1000) : Math.round(v);
+}
+
+/** 按关键词猜类别 */
+export function guessCategory(text) {
+  const t = String(text || '');
+  for (const [key, re] of GUESS_RULES) {
+    if (re.test(t)) return key;
+  }
+  return 'other';
+}
+
+/** 类别 + 克数 → 估算宏量营养素 */
+export function estimateFor(catKey, grams) {
+  const c = estCatOf(catKey);
+  const r = (grams > 0 ? grams : c.grams) / 100;
+  return {
+    kcal: Math.round(c.per100.k * r),
+    p: Math.round(c.per100.p * r * 10) / 10,
+    c: Math.round(c.per100.c * r * 10) / 10,
+    f: Math.round(c.per100.f * r * 10) / 10,
+  };
+}
+
+/** 对一段未识别文本给出完整猜测：类别 + 克数 + 估算值 */
+export function guessFor(text) {
+  const catKey = guessCategory(text);
+  const grams = extractGrams(text) || estCatOf(catKey).grams;
+  return Object.assign({ catKey, grams }, estimateFor(catKey, grams));
+}
+
+/** 解析结果 + 手估条目 → 这一餐总宏量 */
+export function entryTotals(parsed, manualItems) {
+  const t = { kcal: parsed.kcal, p: parsed.p, c: parsed.c, f: parsed.f };
+  for (const m of (manualItems || [])) {
+    t.kcal += m.kcal || 0; t.p += m.p || 0; t.c += m.c || 0; t.f += m.f || 0;
+  }
+  t.p = Math.round(t.p * 10) / 10;
+  t.c = Math.round(t.c * 10) / 10;
+  t.f = Math.round(t.f * 10) / 10;
+  return t;
+}
+
 /** 营养目标（按体重；无体重用通用默认） */
 export function targets(bodyweight, trainedToday) {
   const bw = bodyweight > 0 ? bodyweight : 0;
