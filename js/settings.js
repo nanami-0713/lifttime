@@ -1,7 +1,8 @@
 // 设置页：单位/主题/体重、时间分类管理、数据导入导出、安装说明
 import { getState, commit, replaceAll, defaults, CAN_PERSIST } from './store.js';
 import { openSheet, confirmD, toast, applyTheme, deferredInstall, isStandalone, isIOS, APP_VERSION, APP_NAME, nav } from './app.js';
-import { escapeHtml } from './util.js';
+import { escapeHtml, safeColor } from './util.js';
+import { aiConfig, callAI, AI_DEFAULTS } from './ai.js';
 
 const PALETTE = ['#ef4444', '#f97316', '#f59e0b', '#22c55e', '#14b8a6', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b'];
 
@@ -14,7 +15,7 @@ export function render(root) {
         <div class="field">
           <label>体重（用于蛋白质建议，kg）</label>
           <input id="st-bw" type="number" inputmode="decimal" min="0" step="0.1" placeholder="如 70"
-            value="${st.settings.bodyweight || ''}">
+            value="${escapeHtml(st.settings.bodyweight || '')}">
         </div>
         <div class="field">
           <label>重量单位</label>
@@ -39,6 +40,39 @@ export function render(root) {
       <h2>时间分类</h2>
       <div class="rows" id="cat-rows"></div>
       <button class="btn btn-ghost btn-small" id="cat-add" style="margin-top:10px">＋ 新增分类</button>
+    </div>
+
+    <div class="card">
+      <h2>🤖 AI 简评（可选）</h2>
+      <p class="hint" style="margin:0 0 12px">接入智谱 GLM 后，每次训练结束用大模型生成简评（不写 Key 则继续用内置规则版）。Key 只保存在本机，浏览器直连智谱；注意「导出备份」会包含 Key。</p>
+      <div class="field">
+        <label>智谱 API Key（GLM Coding Plan）</label>
+        <input id="ai-key" type="password" autocomplete="off" placeholder="粘贴你的 API Key" value="${escapeHtml(st.settings.aiKey || '')}">
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>模型</label>
+          <input id="ai-model" placeholder="${AI_DEFAULTS.model}" value="${escapeHtml(st.settings.aiModel || '')}">
+        </div>
+        <div class="field">
+          <label>思考强度</label>
+          <select id="ai-effort">
+            <option value="max" ${(st.settings.aiEffort || 'max') === 'max' ? 'selected' : ''}>max（深度）</option>
+            <option value="high" ${st.settings.aiEffort === 'high' ? 'selected' : ''}>high（增强）</option>
+            <option value="low" ${st.settings.aiEffort === 'low' ? 'selected' : ''}>low（轻量）</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>接口地址（默认 Coding Plan 端点，跨域被拦可改自部署代理）</label>
+        <input id="ai-baseurl" placeholder="${AI_DEFAULTS.baseUrl}" value="${escapeHtml(st.settings.aiBaseUrl || '')}">
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-primary" id="ai-save" style="flex:1.4">保存配置</button>
+        <button class="btn" id="ai-test" style="flex:1">测试连接</button>
+        <button class="btn btn-ghost" id="ai-clear" style="flex:1;color:var(--brand)">清除</button>
+      </div>
+      <p class="hint" id="ai-status" style="margin:8px 0 0">${st.settings.aiKey ? '✓ 已配置，训练结束将自动生成 AI 简评' : ''}</p>
     </div>
 
     <div class="card">
@@ -83,6 +117,8 @@ export function render(root) {
   renderCats(root);
   root.querySelector('#cat-add').addEventListener('click', catAddSheet);
 
+  bindAI(root);
+
   root.querySelector('#data-export').addEventListener('click', doExport);
   root.querySelector('#data-import').addEventListener('click', () => root.querySelector('#import-file').click());
   root.querySelector('#import-file').addEventListener('change', doImport);
@@ -91,14 +127,64 @@ export function render(root) {
   renderInstall(root);
 }
 
+function bindAI(root) {
+  const statusEl = root.querySelector('#ai-status');
+  root.querySelector('#ai-save').addEventListener('click', () => {
+    const store = getState();
+    const key = root.querySelector('#ai-key').value.trim();
+    store.settings.aiKey = key || null;
+    store.settings.aiModel = root.querySelector('#ai-model').value.trim() || null;
+    store.settings.aiEffort = root.querySelector('#ai-effort').value || null;
+    store.settings.aiBaseUrl = root.querySelector('#ai-baseurl').value.trim() || null;
+    commit();
+    statusEl.textContent = key ? '✓ 已配置，训练结束将自动生成 AI 简评' : '已清除 Key，继续使用内置规则版简评';
+    toast(key ? 'AI 简评已开启' : '已保存');
+  });
+  root.querySelector('#ai-clear').addEventListener('click', async () => {
+    if (!(await confirmD('清除 AI 配置（Key、模型、接口）？', { danger: true, yes: '清除' }))) return;
+    const store = getState();
+    store.settings.aiKey = null;
+    store.settings.aiModel = null;
+    store.settings.aiEffort = null;
+    store.settings.aiBaseUrl = null;
+    commit();
+    root.querySelector('#ai-key').value = '';
+    root.querySelector('#ai-model').value = '';
+    root.querySelector('#ai-baseurl').value = '';
+    statusEl.textContent = '';
+    toast('已清除 AI 配置');
+  });
+  root.querySelector('#ai-test').addEventListener('click', async e => {
+    // 直接用当前输入构造配置测试（不 commit，避免整页重渲染导致状态元素脱落）
+    const cfg = aiConfig({
+      aiKey: root.querySelector('#ai-key').value.trim() || null,
+      aiModel: root.querySelector('#ai-model').value.trim() || null,
+      aiEffort: root.querySelector('#ai-effort').value || null,
+      aiBaseUrl: root.querySelector('#ai-baseurl').value.trim() || null,
+    });
+    if (!cfg) { statusEl.textContent = '先填 API Key'; return; }
+    const btn = e.target;
+    btn.disabled = true;
+    statusEl.textContent = '测试中（模型思考需要一点时间）…';
+    const t0 = Date.now();
+    try {
+      const text = await callAI(cfg, [{ role: 'user', content: '只回复两个字：正常' }]);
+      statusEl.textContent = '✓ 连接成功（' + ((Date.now() - t0) / 1000).toFixed(1) + 's，模型 ' + cfg.model + '）：' + text.slice(0, 30);
+    } catch (err) {
+      statusEl.textContent = '✗ ' + (err && err.message ? err.message : '连接失败');
+    }
+    btn.disabled = false;
+  });
+}
+
 function renderCats(root) {
   const st = getState();
   const el = root.querySelector('#cat-rows');
   el.innerHTML = st.categories.map((c, i) => `
     <div class="row" data-i="${i}">
-      <span class="bar-mark" style="background:${c.color}"></span>
+      <span class="bar-mark" style="background:${safeColor(c.color)}"></span>
       <div class="row-main"><div class="row-title">${escapeHtml(c.label)}</div></div>
-      <button class="icon-btn cat-del" data-key="${c.key}" aria-label="删除分类">✕</button>
+      <button class="icon-btn cat-del" data-key="${escapeHtml(c.key)}" aria-label="删除分类">✕</button>
     </div>`).join('');
   el.querySelectorAll('.cat-del').forEach(b => b.addEventListener('click', async () => {
     const st2 = getState();
@@ -169,6 +255,7 @@ function doImport(e) {
   const file = e.target.files && e.target.files[0];
   e.target.value = '';
   if (!file) return;
+  if (file.size > 50 * 1024 * 1024) { toast('导入失败：文件过大（超过 50MB）'); return; }
   const reader = new FileReader();
   reader.onload = async () => {
     try {

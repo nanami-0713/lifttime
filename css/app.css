@@ -26,7 +26,7 @@ html[data-theme="dark"] {
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html { height: 100%; }
+html { height: 100%; touch-action: manipulation; }
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
@@ -37,7 +37,11 @@ body {
   min-height: 100%;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
+  /* App 式触摸行为：禁长按选中/呼出菜单，杜绝点击被识别成文本选择 */
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
 }
+input, textarea { -webkit-user-select: text; user-select: text; }
 button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
 button { cursor: pointer; }
 
@@ -205,6 +209,7 @@ main { flex: 1; padding: 14px 14px calc(84px + env(safe-area-inset-bottom, 0px))
   border-radius: 20px 20px 0 0;
   padding: 8px 16px calc(18px + env(safe-area-inset-bottom, 0px));
   max-height: 88vh; overflow-y: auto;
+  overscroll-behavior: contain;
   transform: translateY(40px); opacity: 0.6;
   transition: transform 0.2s ease, opacity 0.2s ease;
   box-shadow: var(--shadow-lg);
@@ -217,6 +222,7 @@ main { flex: 1; padding: 14px 14px calc(84px + env(safe-area-inset-bottom, 0px))
 /* toast */
 .toast {
   position: fixed; left: 50%; bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+  pointer-events: none; /* 关键：隐藏后仍留在 DOM，绝不允许它拦截底部点击 */
   transform: translateX(-50%) translateY(8px);
   background: rgba(17, 24, 39, 0.92); color: #fff;
   padding: 10px 18px; border-radius: 999px; font-size: 13.5px;
@@ -296,7 +302,7 @@ html[data-theme="dark"] .toast { background: rgba(229, 231, 235, 0.95); color: #
 .search-list .row { padding: 10px 2px; }
 
 /* 简报文本 */
-.brief-p { margin: 0 0 10px; font-size: 14.5px; }
+.brief-p { margin: 0 0 10px; font-size: 14.5px; -webkit-user-select: text; user-select: text; }
 .brief-p:first-child { font-weight: 600; }
 .advice-list { margin: 6px 0 0; padding-left: 0; list-style: none; }
 .advice-list li { position: relative; padding-left: 16px; margin-bottom: 7px; font-size: 13.5px; color: var(--text); }

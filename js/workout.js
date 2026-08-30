@@ -4,6 +4,7 @@ import { openSheet, confirmD, toast, nav } from './app.js';
 import { renderAnalysisHTML } from './analysisView.js';
 import { analyzeSession, sessionStats } from './analysis.js';
 import { summarize, entriesOfDay } from './nutrition.js';
+import { aiConfig, generateAIAnalysis } from './ai.js';
 import { searchExercises, resolveExercise, MUSCLES, muscleLabels } from './exercises.js';
 import { fmtClock, fmtHM, fmtDateCN, fmtDur, fmtLoad, escapeHtml, dayRange, dayKey } from './util.js';
 
@@ -297,7 +298,34 @@ function finishSheet() {
     close();
     nav('report');
     toast('训练已保存，看看今天的简评 ↓');
+    aiUpgrade(finished.id);
   });
+}
+
+/** 配置了 AI 则在后台用大模型重写简评文字，失败保留规则版 */
+async function aiUpgrade(workoutId, opts) {
+  opts = opts || {};
+  const store = getState();
+  const cfg = aiConfig(store.settings);
+  if (!cfg) return;
+  const w = store.workouts.find(x => x.id === workoutId);
+  if (!w || !w.analysis) return;
+  if (!opts.silent) toast('🤖 AI 简评生成中（深度思考，约 10–60 秒）…', 5000);
+  try {
+    const fields = await generateAIAnalysis(w, w.analysis, {
+      bodyweight: store.settings.bodyweight,
+      dayIntake: dayIntakeToday(store, w.startedAt),
+      history: store.workouts.filter(x => x.startedAt < w.startedAt),
+    }, cfg);
+    const store2 = getState();
+    const target = store2.workouts.find(x => x.id === workoutId);
+    if (!target) return;
+    Object.assign(target.analysis, fields, { ai: { model: cfg.model, effort: cfg.effort, at: Date.now() } });
+    commit();
+    toast('🤖 AI 简评已生成');
+  } catch (e) {
+    toast('AI 简评失败，已保留规则版：' + (e && e.message ? e.message : '未知错误'), 5000);
+  }
 }
 
 function dayIntakeToday(store, woStartedAt) {
@@ -340,8 +368,17 @@ function detailSheet(id) {
     </p>
     <div style="margin-bottom:6px">${exHtml}</div>
     <div style="margin:4px -16px 0;padding:0 16px">${renderAnalysisHTML(a)}</div>
+    ${st.settings.aiKey ? '<button class="btn btn-xl" id="dt-ai" style="margin-top:14px">🤖 用 AI 重新生成简评</button>' : ''}
     <button class="btn btn-ghost btn-xl" id="dt-del" style="margin-top:14px;color:var(--brand)">删除这次训练</button>`;
   const { close } = openSheet('训练详情', body);
+  const aiBtn = body.querySelector('#dt-ai');
+  if (aiBtn) aiBtn.addEventListener('click', async () => {
+    aiBtn.disabled = true;
+    aiBtn.textContent = '🤖 生成中（约 10–60 秒）…';
+    await aiUpgrade(id, { silent: true });
+    close();
+    detailSheet(id); // 重新打开展示新简评
+  });
   body.querySelector('#dt-del').addEventListener('click', async () => {
     if (await confirmD('删除这次训练记录及其分析？', { danger: true, yes: '删除' })) {
       const store = getState();

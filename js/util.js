@@ -73,6 +73,13 @@ export function escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+const HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+
+/** 只允许十六进制颜色进入 style/SVG 上下文，其余回退到安全色 */
+export function safeColor(v, fallback = '#94a3b8') {
+  return (typeof v === 'string' && HEX_COLOR_RE.test(v)) ? v : fallback;
+}
+
 /** 重量显示：内部一律存 kg，按单位换算显示 */
 export function kgToUnit(kg, unit) {
   if (unit === 'lb') return Math.round(kg * 2.20462 * 10) / 10;

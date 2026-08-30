@@ -12,7 +12,7 @@ export function renderAnalysisHTML(a) {
   const unit = a.unit || 'kg';
   const h = [];
 
-  h.push(`<div class="section-title">简评</div>`);
+  h.push(`<div class="section-title">简评${a.ai ? ` <span class="badge badge-green" style="font-weight:600">🤖 ${escapeHtml(a.ai.model || 'AI')}</span>` : ''}</div>`);
   a.brief.forEach(p => h.push(`<p class="brief-p">${escapeHtml(p)}</p>`));
 
   h.push(`<div class="stats">

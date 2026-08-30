@@ -1,5 +1,5 @@
 // 练时 LiftTime Service Worker：应用壳缓存优先，离线可用
-const CACHE = 'lifttime-v1.2.5';
+const CACHE = 'lifttime-v1.3.0';
 const ASSETS = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ const ASSETS = [
   './js/diet.js',
   './js/finance.js',
   './js/budget.js',
+  './js/ai.js',
   './js/report.js',
   './js/settings.js',
   './icons/icon-192.png',
@@ -51,8 +52,19 @@ self.addEventListener('fetch', e => {
   if (req.mode === 'navigate') {
     e.respondWith(
       fetch(req).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE).then(c => c.put('./index.html', copy));
+        // 只有规范应用壳（同源、成功的 HTML 导航响应）才允许覆盖离线缓存，
+        // 避免任意同源导航的响应污染离线应用壳
+        const finalUrl = new URL(res.url || req.url);
+        const shellUrl = new URL('./index.html', self.registration.scope);
+        const isShell = res.ok
+          && res.type === 'basic'
+          && finalUrl.origin === location.origin
+          && (finalUrl.pathname === shellUrl.pathname || finalUrl.pathname === new URL('./', self.registration.scope).pathname)
+          && (res.headers.get('Content-Type') || '').toLowerCase().includes('text/html');
+        if (isShell) {
+          const copy = res.clone();
+          e.waitUntil(caches.open(CACHE).then(c => c.put('./index.html', copy)));
+        }
         return res;
       }).catch(() => caches.match('./index.html').then(r => r || Response.error()))
     );
