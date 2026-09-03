@@ -1,5 +1,5 @@
 // 练时 LiftTime Service Worker：应用壳缓存优先，离线可用
-const CACHE = 'lifttime-v1.3.0';
+const CACHE = 'lifttime-v1.4.0';
 const ASSETS = [
   './',
   './index.html',

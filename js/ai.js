@@ -163,3 +163,26 @@ export async function generateAIAnalysis(workout, ruleAnalysis, ctx, cfg, fetchI
   const text = await callAI(cfg, messages, fetchImpl);
   return parseAIResponse(text);
 }
+
+/** AI 估算单个食物的热量和三大营养素（用 low 强度，求快） */
+export async function aiEstimateFood(text, grams, cfg, fetchImpl) {
+  const messages = [
+    { role: 'system', content: '你是营养师，熟悉《中国食物成分表》。只输出 JSON，不要解释、不要围栏。' },
+    { role: 'user', content: '估算「' + text + '」（可食部分约 ' + (grams > 0 ? grams : 100) + ' 克）的热量和三大营养素。严格输出 JSON：{"kcal":数字,"p":数字,"c":数字,"f":数字}，kcal=千卡，p/c/f=克。拿不准就给最常见的餐馆/家庭做法的合理估值。' },
+  ];
+  const content = await callAI(Object.assign({}, cfg, { effort: 'low' }), messages, fetchImpl);
+  return parseFoodEstimate(content);
+}
+
+/** 解析 AI 食物估算输出 */
+export function parseFoodEstimate(text) {
+  let s = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+  const i = s.indexOf('{'), j = s.lastIndexOf('}');
+  if (i < 0 || j <= i) throw new Error('AI 输出不是 JSON');
+  let o;
+  try { o = JSON.parse(s.slice(i, j + 1)); } catch (e) { throw new Error('JSON 解析失败'); }
+  const num = v => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : 0; };
+  const out = { kcal: num(o.kcal), p: num(o.p), c: num(o.c), f: num(o.f) };
+  if (!(out.kcal > 0)) throw new Error('AI 估算结果无效');
+  return out;
+}

@@ -1,5 +1,5 @@
 // 饮食引擎单元测试：node tests/nutrition.test.mjs
-import { parseMealText, targets, summarize, dailyAdvice, periodDiet, mealOf, ESTIMATE_CATS, estCatOf, extractGrams, guessCategory, estimateFor, guessFor, entryTotals } from '../js/nutrition.js';
+import { parseMealText, targets, summarize, dailyAdvice, periodDiet, mealOf, ESTIMATE_CATS, estCatOf, extractGrams, guessCategory, estimateFor, guessFor, entryTotals, cleanFoodName, learnFood } from '../js/nutrition.js';
 import { findFood } from '../js/foods.js';
 
 let pass = 0, fail = 0;
@@ -126,6 +126,42 @@ ok(g.catKey === 'soup' && g.grams === 300, '酸辣汤默认 300g 汤');
 const parsed = parseMealText('2个鸡蛋');
 const totals = entryTotals(parsed, [{ name: '神秘菜', kcal: 400, p: 20, c: 10, f: 5 }]);
 ok(totals.kcal === parsed.kcal + 400 && Math.abs(totals.p - (parsed.p + 20)) < 0.01, 'entryTotals 合并解析+手估');
+
+console.log('— 扩充食物库 & 新单位 —');
+ok(findFood('宫保鸡丁') && findFood('宫保鸡丁').k === 130, '家常菜「宫保鸡丁」命中');
+ok(findFood('红烧肉') && findFood('红烧肉').k === 400, '「红烧肉」命中');
+ok(findFood('鸡腿') && findFood('鸡腿').p === 16, '「鸡腿」命中');
+ok(findFood('火龙果') && findFood('火龙果').t.includes('fruit'), '「火龙果」命中');
+ok(findFood('手抓饼') && findFood('手抓饼').u === '个', '「手抓饼」命中');
+ok(findFood('电解质水') && findFood('电解质水').k === 25, '「电解质水」命中');
+ok(findFood('黄焖鸡米饭'), '「黄焖鸡米饭」命中');
+let r2 = parseMealText('一袋鸡胸肉丸');
+ok(r2.items.length === 1 && r2.items[0].grams === 100, '「一袋鸡胸肉丸」→ 100g（袋单位）');
+r2 = parseMealText('二两白酒');
+ok(r2.items[0].grams === 100, '「二两白酒」→ 100g（市制两）');
+r2 = parseMealText('两碗米饭');
+ok(r2.items[0].grams === 400, '「两碗米饭」仍按数量 2 解析');
+r2 = parseMealText('一套煎饼果子');
+ok(r2.items[0].grams === 250, '「一套煎饼果子」→ 250g（套单位）');
+r2 = parseMealText('三瓣柚子');
+ok(r2.items[0].grams === 300, '「三瓣柚子」→ 300g（瓣单位）');
+r2 = parseMealText('一串葡萄、一份宫保鸡丁、一杯冰红茶');
+ok(r2.items.length === 3 && r2.unmatched.length === 0, '混合新库三项全识别');
+
+console.log('— 自定义食物库（自学习）—');
+ok(cleanFoodName('一份佛跳墙300g') === '佛跳墙', 'cleanFoodName 去数量与克数');
+ok(cleanFoodName('两碗自制酸奶') === '自制酸奶', 'cleanFoodName 中文数量');
+const learned = learnFood({ name: '一份佛跳墙300g', grams: 300, kcal: 600, p: 24, c: 30, f: 40 });
+ok(learned && learned.name === '佛跳墙' && learned.k === 200 && learned.g === 300, 'learnFood 归一每100g: ' + JSON.stringify(learned));
+ok(learnFood({ name: 'x', grams: 0, kcal: 100 }) === null, 'learnFood 拒绝无克数');
+ok(learnFood({ name: 'x', grams: 100, kcal: 0 }) === null, 'learnFood 拒绝无热量');
+const custom = { 佛跳墙: { k: 200, p: 8, c: 10, f: 13.3, g: 300, u: '份' } };
+r2 = parseMealText('一份佛跳墙', custom);
+ok(r2.items.length === 1 && r2.items[0].grams === 300 && r2.items[0].kcal === 600, '自定义库命中: 1份=300g=600kcal');
+r2 = parseMealText('佛跳墙150g', custom);
+ok(r2.items[0].kcal === 300, '自定义库按克缩放: 150g=300kcal');
+r2 = parseMealText('一个鸡蛋', custom);
+ok(r2.items[0].name === '鸡蛋', '内置库不受自定义影响');
 
 console.log('— mealOf —');
 ok(mealOf('preworkout').label === '练前餐', '餐次映射');

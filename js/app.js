@@ -8,7 +8,7 @@ import * as budgetTab from './budget.js';
 import * as reportTab from './report.js';
 import * as settingsTab from './settings.js';
 
-export const APP_VERSION = '1.3.0';
+export const APP_VERSION = '1.4.0';
 export const APP_NAME = '练时 LiftTime';
 
 const TABS = {

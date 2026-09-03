@@ -44,6 +44,16 @@ const server = createServer((req, res) => {
     req.on('end', () => {
       // 模拟鉴权：带特定 key 可测错误分支（fail / empty / slow）
       const auth = req.headers.authorization || '';
+      // 食物估算 prompt（含「估算「...」」特征）返回食物宏量 JSON
+      let isFood = false;
+      try { const b = JSON.parse(body); isFood = (b.messages || []).some(m => typeof m.content === 'string' && m.content.includes('估算「')); } catch (e) {}
+      if (isFood) {
+        setTimeout(() => {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content: JSON.stringify({ kcal: 250, p: 20, c: 10, f: 12 }) } }] }));
+        }, 500);
+        return;
+      }
       let payload;
       if (auth.includes('fail401')) {
         res.writeHead(401, { 'Content-Type': 'application/json' });

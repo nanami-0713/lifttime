@@ -37,6 +37,7 @@ export function defaults() {
     customExercises: {},  // 名称 -> { p:[muscleKey], s:[muscleKey] }
     dietEntries: [],      // {id, ts, meal, text, items, unmatched, kcal, p, c, f, cost?}
     expenses: [],         // {id, ts, amount, cat, note}
+    customFoods: {},      // 名称 -> {k,p,c,f,g,u}（每100g + 上次份量），手估食物自动学习
   };
 }
 

@@ -13,17 +13,20 @@ export const MEALS = [
 export function mealOf(key) { return MEALS.find(m => m.key === key) || MEALS[3]; }
 
 const CN_NUM = { '半': 0.5, '一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10 };
+// 中国市制单位：两 = 50g（「二两白酒」）
+const UNIT_GRAMS = { '两': 50 };
 
 /**
  * 解析一段食物描述，如 "2个鸡蛋"、"一杯牛奶"、"200g鸡胸肉"、"米饭300g"。
+ * customFoods: 用户自定义食物库（优先于内置库）
  * 返回 { name, grams, kcal, p, c, f, matched } 或 { text, matched:false }
  */
-function parseSegment(seg) {
+function parseSegment(seg, customFoods) {
   const text = seg.trim();
   if (!text) return null;
   let qty = null, unit = '', rest = text;
 
-  const lead = text.match(/^([0-9]+(?:\.[0-9]+)?|半|一|二|两|三|四|五|六|七|八|九|十)(kg|g|克|毫升|ml|升|l|个|只|杯|碗|份|根|片|块|勺|把|罐|瓶|包|盒|球|串|角|条|颗|粒|盘|屉)?/i);
+  const lead = text.match(/^([0-9]+(?:\.[0-9]+)?|半|一|二|两|三|四|五|六|七|八|九|十)(kg|g|克|毫升|ml|升|l|个|只|杯|碗|份|根|片|块|勺|把|罐|瓶|包|盒|球|串|角|条|颗|粒|盘|屉|袋|套|餐|瓣|段|卷|听|两)?/i);
   if (lead) {
     qty = CN_NUM[lead[1]] != null ? CN_NUM[lead[1]] : parseFloat(lead[1]);
     unit = (lead[2] || '').toLowerCase();
@@ -38,7 +41,7 @@ function parseSegment(seg) {
     }
   }
 
-  const food = findFood(rest);
+  const food = findFood(rest, customFoods);
   if (!food) return { text, matched: false };
 
   let grams;
@@ -46,6 +49,7 @@ function parseSegment(seg) {
   else if (unit === 'kg') grams = qty * 1000;
   else if (unit === 'ml' || unit === '毫升') grams = qty;      // 液体密度≈1
   else if (unit === 'l' || unit === '升') grams = qty * 1000;
+  else if (UNIT_GRAMS[unit]) grams = qty * UNIT_GRAMS[unit];   // 两 → 50g
   else grams = (qty == null ? 1 : qty) * food.g;               // 按份数
 
   const r = grams / 100;
@@ -64,13 +68,14 @@ function parseSegment(seg) {
 
 /**
  * 解析整段描述（顿号/逗号/加号/换行分隔）。
+ * customFoods: 用户自定义食物库（优先于内置库）
  * 返回 { items: [...], unmatched: [...], kcal, p, c, f }
  */
-export function parseMealText(text) {
+export function parseMealText(text, customFoods) {
   const parts = String(text || '').split(/[，,、；;+\n]+/);
   const items = [], unmatched = [];
   for (const p of parts) {
-    const r = parseSegment(p);
+    const r = parseSegment(p, customFoods);
     if (!r) continue;
     if (r.matched) items.push(r); else unmatched.push(r.text);
   }
@@ -153,6 +158,24 @@ export function entryTotals(parsed, manualItems) {
   t.c = Math.round(t.c * 10) / 10;
   t.f = Math.round(t.f * 10) / 10;
   return t;
+}
+
+/** 从原始文本提取干净食物名（去前导数量与尾部克数），用作自定义食物库键名 */
+export function cleanFoodName(text) {
+  let s = String(text || '').trim();
+  s = s.replace(/^([0-9]+(?:\.[0-9]+)?|半|一|二|两|三|四|五|六|七|八|九|十)(kg|g|克|毫升|ml|升|l|个|只|杯|碗|份|根|片|块|勺|把|罐|瓶|包|盒|球|串|角|条|颗|粒|盘|屉|袋|套|餐|瓣|段|卷|听|两)?/i, '');
+  s = s.replace(/([0-9]+(?:\.[0-9]+)?)(kg|g|克|毫升|ml)$/i, '');
+  return s.trim() || String(text || '').trim();
+}
+
+/** 把一条手估条目学进自定义食物库（归一为每 100g）。返回入库条目或 null */
+export function learnFood(manualItem) {
+  if (!manualItem || !(manualItem.grams > 0) || !(manualItem.kcal > 0)) return null;
+  const name = cleanFoodName(manualItem.name);
+  if (!name || name.length > 20) return null;
+  const r = 100 / manualItem.grams;
+  const r1 = v => Math.round((v || 0) * r * 10) / 10;
+  return { name, g: Math.round(manualItem.grams), u: '份', k: Math.round(manualItem.kcal * r), p: r1(manualItem.p), c: r1(manualItem.c), f: r1(manualItem.f) };
 }
 
 /** 营养目标（按体重；无体重用通用默认） */

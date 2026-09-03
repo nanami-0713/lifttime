@@ -1,5 +1,5 @@
 // AI 模块单元测试：node tests/ai.test.mjs
-import { aiConfig, buildWorkoutPrompt, parseAIResponse, callAI, generateAIAnalysis, AIError, AI_DEFAULTS } from '../js/ai.js';
+import { aiConfig, buildWorkoutPrompt, parseAIResponse, callAI, generateAIAnalysis, aiEstimateFood, parseFoodEstimate, AIError, AI_DEFAULTS } from '../js/ai.js';
 
 let pass = 0, fail = 0;
 function ok(cond, msg) {
@@ -98,6 +98,27 @@ ok(err.kind === 'network' && err.message.includes('跨域'), '网络/CORS 失败
 console.log('— generateAIAnalysis —');
 const fields = await generateAIAnalysis(workout, analysis, {}, cfg, mockOk);
 ok(fields.brief.length === 2 && fields.domsLevel === '中度', '端到端（mock）生成字段');
+
+console.log('— parseFoodEstimate —');
+let fe = parseFoodEstimate('{"kcal":520,"p":28,"c":45,"f":22}');
+ok(fe.kcal === 520 && fe.p === 28, '标准解析');
+fe = parseFoodEstimate('```json\n{"kcal":300,"p":10,"c":40,"f":10}\n```');
+ok(fe.kcal === 300, '带围栏解析');
+fe = parseFoodEstimate('估算结果如下：{"kcal":180,"p":12,"c":8,"f":6}');
+ok(fe.p === 12, '带前导语解析');
+let feThrew = false;
+try { parseFoodEstimate('{"kcal":0}'); } catch (e) { feThrew = true; }
+ok(feThrew, '零热量判无效');
+feThrew = false;
+try { parseFoodEstimate('没有json'); } catch (e) { feThrew = true; }
+ok(feThrew, '非 JSON 抛错');
+// aiEstimateFood 走 callAI（mock fetch），且强制 effort=low
+let capBody = null;
+const mockFood = async (url, opts) => { capBody = JSON.parse(opts.body); return { ok: true, json: async () => ({ choices: [{ message: { content: '{"kcal":250,"p":20,"c":10,"f":12}' } }] }) }; };
+const est = await aiEstimateFood('神秘烤肉饭', 400, cfg, mockFood);
+ok(est.kcal === 250 && est.p === 20, 'aiEstimateFood 端到端');
+ok(capBody.reasoning_effort === 'low', '食物估算强制 low 强度（求快）');
+ok(capBody.messages[1].content.includes('400'), 'prompt 携带克数');
 
 console.log('\n结果: ' + pass + ' 通过, ' + fail + ' 失败');
 process.exit(fail ? 1 : 0);

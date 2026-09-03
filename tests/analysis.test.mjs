@@ -28,6 +28,16 @@ ok(searchExercises('划船').length >= 3, '搜索「划船」≥3 个结果');
 ok(resolveExercise('神秘动作').primary.length === 0, '未知动作 primary 为空');
 ok(resolveExercise('我的独家动作', { 我的独家动作: { p: ['chest'] } }).primary[0] === 'chest', '自定义动作映射生效');
 
+console.log('— 扩充动作库 —');
+ok(findInDB('史密斯深蹲') && findInDB('史密斯深蹲').p.includes('quad'), '史密斯深蹲 → 腿');
+ok(findInDB('坐姿髋外展') && findInDB('坐姿髋外展').p.includes('glute'), '髋外展 → 臀');
+ok(findInDB('山羊挺身') && findInDB('山羊挺身').p.includes('back'), '山羊挺身 → 背');
+ok(findInDB('壶铃摇摆') && findInDB('壶铃摇摆').p.includes('hamstring'), '壶铃摇摆 → 腘绳肌');
+ok(findInDB('战绳') && !!findInDB('战绳').cardio, '战绳 → 有氧');
+ok(findInDB('农夫行走') && findInDB('农夫行走').p.includes('forearm'), '农夫行走 → 前臂');
+ok(searchExercises('硬拉').length >= 3, '硬拉变式 ≥3');
+ok(searchExercises('飞鸟').length >= 2, '飞鸟变式 ≥2');
+
 console.log('— sessionStats —');
 const s1 = sessionStats(mkWo(NOW, [mkEx('卧推', [[60, 12], [60, 12], [60, 12]])]), {});
 near(s1.tonnage, 2160, 0.01, '卧推 60×12×3 容量 2160');

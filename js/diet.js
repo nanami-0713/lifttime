@@ -4,8 +4,9 @@ import { openSheet, confirmD, toast } from './app.js';
 import { donut, stackedBars, hbars } from './charts.js';
 import {
   MEALS, mealOf, parseMealText, targets, summarize, dailyAdvice, periodDiet, entriesOfDay,
-  ESTIMATE_CATS, estimateFor, guessFor, entryTotals,
+  ESTIMATE_CATS, estimateFor, guessFor, entryTotals, cleanFoodName, learnFood,
 } from './nutrition.js';
+import { aiConfig, aiEstimateFood } from './ai.js';
 import { sessionStats } from './analysis.js';
 import { fmtHM, fmtNum, dayKey, dayRange, escapeHtml, hmToTs, fmtDateCN } from './util.js';
 
@@ -20,6 +21,7 @@ export function render(root) {
     <div class="card">
       <button class="btn btn-primary btn-xl" id="btn-add-meal">＋ 记一餐</button>
       <p class="hint" style="margin:8px 0 0">直接写「2个鸡蛋、一杯牛奶、一碗米饭」即可自动估算热量和蛋白质。</p>
+      <div style="margin-top:8px;text-align:right"><button class="btn btn-ghost btn-small" id="btn-myfoods" style="min-height:32px">📚 我的食物库</button></div>
     </div>
     <div class="card">
       <h2>今日餐次 <span class="h2-sub" id="meal-count"></span></h2>
@@ -35,6 +37,7 @@ export function render(root) {
     </div>`;
 
   root.querySelector('#btn-add-meal').addEventListener('click', () => mealSheet(null));
+  root.querySelector('#btn-myfoods').addEventListener('click', myFoodsSheet);
   root.querySelector('#diet-seg').addEventListener('click', e => {
     const b = e.target.closest('button[data-p]');
     if (!b) return;
@@ -139,7 +142,7 @@ function paintMeals(root) {
   el.querySelectorAll('.row').forEach(r => r.addEventListener('click', () => mealSheet(r.dataset.id)));
 }
 
-function estRowHTML(r, i) {
+function estRowHTML(r, i, showAI) {
   if (!r.include) {
     return `<div class="est-row" data-i="${i}">
       <div class="est-head">「${escapeHtml(r.text)}」<span style="color:var(--muted)">已不计入</span>
@@ -148,7 +151,7 @@ function estRowHTML(r, i) {
   }
   return `<div class="est-row" data-i="${i}">
     <div class="est-head">「${escapeHtml(r.text)}」没认出来 · 帮你估一下：
-      <button class="btn btn-ghost btn-small est-skip" style="min-height:30px">不计入</button></div>
+      <span style="display:flex;gap:4px">${showAI ? '<button class="btn btn-ghost btn-small est-ai" style="min-height:30px">🤖 AI 估</button>' : ''}<button class="btn btn-ghost btn-small est-skip" style="min-height:30px">不计入</button></span></div>
     <div class="est-controls">
       <select class="est-cat">${ESTIMATE_CATS.map(c =>
         `<option value="${c.key}" ${c.key === r.catKey ? 'selected' : ''}>${c.label}</option>`).join('')}</select>
@@ -224,7 +227,7 @@ function mealSheet(editId) {
     estRows = next;
   }
   const paintPreview = () => {
-    const p = parseMealText(textEl.value);
+    const p = parseMealText(textEl.value, getState().customFoods);
     syncEstRows(p.unmatched);
     if (!p.items.length && !p.unmatched.length) { previewEl.innerHTML = ''; return; }
     const manual = estRows.filter(r => r.include);
@@ -235,8 +238,9 @@ function mealSheet(editId) {
         `<span class="set-chip">${escapeHtml(i.label)}<span style="color:var(--muted)">${i.grams}g</span></span>`).join('') + `</div>`;
     }
     h += `<p class="hint" style="margin:0 0 6px">≈ ${fmtNum(t.kcal)} kcal · 蛋白质 ${t.p}g · 碳水 ${t.c}g · 脂肪 ${t.f}g${manual.length ? '（含 ' + manual.length + ' 项估算）' : ''}</p>`;
+    const showAI = !!aiConfig(getState().settings);
     if (estRows.length) {
-      h += estRows.map((r, i) => estRowHTML(r, i)).join('');
+      h += estRows.map((r, i) => estRowHTML(r, i, showAI)).join('');
     }
     previewEl.innerHTML = h;
     // 绑定估算行事件
@@ -266,6 +270,28 @@ function mealSheet(editId) {
         row.include = !row.include;
         paintPreview();
       });
+      const aiBtn = rowEl.querySelector('.est-ai');
+      if (aiBtn) aiBtn.addEventListener('click', async () => {
+        const cfg = aiConfig(getState().settings);
+        if (!cfg) return;
+        aiBtn.disabled = true;
+        aiBtn.textContent = '🤖 估算中…';
+        try {
+          const grams = Math.max(0, Number(rowEl.querySelector('.est-grams').value) || row.grams);
+          const est = await aiEstimateFood(row.text, grams, cfg);
+          Object.assign(row, est, { grams, catKey: row.catKey });
+          rowEl.querySelector('.est-k').value = est.kcal;
+          rowEl.querySelector('.est-p').value = est.p;
+          rowEl.querySelector('.est-c').value = est.c;
+          rowEl.querySelector('.est-f').value = est.f;
+          toast('AI 已估算，可继续手动微调');
+          paintPreview();
+        } catch (e2) {
+          toast('AI 估算失败：' + (e2 && e2.message ? e2.message : '未知错误'), 4000);
+        }
+        aiBtn.disabled = false;
+        aiBtn.textContent = '🤖 AI 估';
+      });
     });
   };
   paintPreview();
@@ -276,7 +302,7 @@ function mealSheet(editId) {
     const text = textEl.value.trim();
     if (!text) { toast('先写吃了什么'); return; }
     const ts = hmToTs(body.querySelector('#ms-date').value || dayKey(now), body.querySelector('#ms-time').value || '12:00');
-    const p = parseMealText(text);
+    const p = parseMealText(text, getState().customFoods);
     const store = getState();
     const costRaw = body.querySelector('#ms-cost').value.trim();
     const cost = costRaw === '' ? 0 : Math.max(0, Number(costRaw) || 0);
@@ -287,12 +313,19 @@ function mealSheet(editId) {
     const keptUnmatched = estRows.filter(r => !r.include || !(r.kcal > 0)).map(r => r.text);
     const t = entryTotals(p, manualItems);
     const data = { ts, meal, text, items: p.items, manualItems, unmatched: keptUnmatched, kcal: t.kcal, p: t.p, c: t.c, f: t.f, cost };
+    // 自动学习：手估过的食物进自定义库，下次直接识别
+    if (!store.customFoods) store.customFoods = {};
+    let learned = 0;
+    for (const m of manualItems) {
+      const lf = learnFood(m);
+      if (lf && !store.customFoods[lf.name]) { store.customFoods[lf.name] = lf; learned++; }
+    }
     if (existing) {
       Object.assign(existing, data);
       toast('已更新这一餐');
     } else {
       store.dietEntries.push(Object.assign({ id: uid() }, data));
-      toast('已记录：' + mealOf(meal).label + ' ' + t.kcal + ' kcal');
+      toast('已记录：' + mealOf(meal).label + ' ' + t.kcal + ' kcal' + (learned ? '，已记住 ' + learned + ' 个新食物' : ''));
     }
     commit();
     close();
@@ -306,6 +339,36 @@ function mealSheet(editId) {
       close();
     }
   });
+}
+
+function myFoodsSheet() {
+  const st = getState();
+  const foods = st.customFoods || {};
+  const names = Object.keys(foods);
+  const body = document.createElement('div');
+  if (!names.length) {
+    body.innerHTML = '<p class="empty">还没有自定义食物。记餐时「帮你估一下」填过的食物会自动进这里，下次直接识别。</p>';
+  } else {
+    body.innerHTML = `<p class="hint" style="margin:0 0 10px">共 ${names.length} 个 · 记餐时优先于内置库匹配（数值为每 100g）</p>
+      <div class="rows">` + names.map(n => {
+        const f = foods[n];
+        return `<div class="row" data-name="${escapeHtml(n)}">
+          <div class="row-main"><div class="row-title">${escapeHtml(n)}</div>
+          <div class="row-sub">${f.k} kcal · 蛋白${f.p}g · 碳水${f.c}g · 脂肪${f.f}g · 份量约${f.g}g</div></div>
+          <button class="icon-btn mf-del" aria-label="删除">✕</button>
+        </div>`;
+      }).join('') + `</div>`;
+  }
+  openSheet('我的食物库', body);
+  body.querySelectorAll('.mf-del').forEach(b => b.addEventListener('click', async e => {
+    const name = e.target.closest('.row').dataset.name;
+    if (await confirmD('从食物库删除「' + name + '」？', { danger: true, yes: '删除' })) {
+      const store = getState();
+      delete store.customFoods[name];
+      commit();
+      toast('已删除');
+    }
+  }));
 }
 
 function guessMeal(st) {
